@@ -15,7 +15,7 @@ type Section = {
 // Shared layout primitives — single source of truth for section styling (DRY).
 const SECTION_WRAPPER = "max-w-2xl w-full";
 const SECTION_LABEL =
-  "font-mono uppercase text-sm text-foreground/40 mb-4 text-balance";
+  "font-mono uppercase text-xs text-foreground/40 mb-4 text-balance";
 const SECTION_HEADING =
   "text-2xl md:text-3xl lg:text-4xl tracking-tight font-medium text-foreground mb-6 md:mb-8 leading-none text-balance";
 const SECTION_BODY_BASE =
@@ -65,7 +65,7 @@ function buildSections(): Section[] {
               <p>{report.author.name}</p>
             </TooltipContent>
           </Tooltip>
-          <p className="font-mono text-sm text-foreground/40 text-balance uppercase">
+          <p className="font-mono text-xs text-foreground/40 text-balance uppercase">
             <a
               href="https://www.404roy.com"
               target="_blank"
