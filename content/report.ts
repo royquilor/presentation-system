@@ -1,5 +1,5 @@
 export const report = {
-  title: "Presentation as a system",
+  title: "Presentation system",
   subtitle: "A calm, markdown-first way to share ideas.",
   date: "2025",
   conversations: 0,
