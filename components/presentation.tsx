@@ -15,9 +15,9 @@ type Section = {
 // Shared layout primitives — single source of truth for section styling (DRY).
 const SECTION_WRAPPER = "max-w-2xl w-full";
 const SECTION_LABEL =
-  "font-mono text-sm text-foreground/40 mb-4 text-balance";
+  "font-mono uppercase text-xs text-foreground/40 mb-4 text-balance";
 const SECTION_HEADING =
-  "text-2xl md:text-3xl lg:text-4xl font-medium text-foreground mb-6 md:mb-8 leading-none text-balance";
+  "text-2xl md:text-3xl lg:text-4xl tracking-tight font-medium text-foreground mb-6 md:mb-8 leading-none text-balance";
 const SECTION_BODY_BASE =
   "text-foreground/60 text-base md:text-lg leading-relaxed text-balance";
 
@@ -65,7 +65,7 @@ function buildSections(): Section[] {
               <p>{report.author.name}</p>
             </TooltipContent>
           </Tooltip>
-          <p className="font-mono text-sm text-foreground/40 text-balance">
+          <p className="font-mono text-xs text-foreground/40 text-balance uppercase">
             <a
               href="https://www.404roy.com"
               target="_blank"
@@ -77,7 +77,7 @@ function buildSections(): Section[] {
             — 27 Feb 2026
           </p>
         </div>
-        <h1 className="text-3xl md:text-5xl lg:text-6xl font-medium text-foreground leading-none text-balance">
+        <h1 className="text-3xl md:text-5xl lg:text-6xl tracking-tighter font-medium text-foreground leading-none text-balance">
           {report.title}
         </h1>
         <p className="text-xl md:text-2xl text-foreground/60 mt-6 leading-snug text-balance">
@@ -343,13 +343,10 @@ export function Presentation() {
             className="block cursor-pointer"
           >
             <motion.span
-              className="block h-[2px] origin-right rounded-full"
+              className="block h-[2px] origin-right rounded-full bg-foreground"
               animate={{
                 scaleX: activeIndex === i ? 1 : 0.5,
-                backgroundColor:
-                  activeIndex === i
-                    ? "currentColor"
-                    : "color-mix(in srgb, currentColor 25%, transparent)",
+                opacity: activeIndex === i ? 1 : 0.25,
               }}
               transition={
                 prefersReducedMotion
