@@ -1,12 +1,12 @@
 export const report = {
   title: "Presentation system",
   subtitle: "A calm, markdown-first way to share ideas.",
-  date: "2025",
+  date: "2026",
   conversations: 0,
   author: {
-    name: "Roy Quilor",
-    avatarUrl: "https://avatars.githubusercontent.com/u/2366186?v=4",
-    initials: "RQ",
+    name: "Ben Schaumkel",
+    avatarUrl: "",
+    initials: "BS",
   },
 
   // ## Context

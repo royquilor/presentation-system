@@ -1,0 +1,70 @@
+type AuthorInfo = { name: string; profileUrl: string };
+
+const PROFILES: Record<string, string> = {
+  "Joe Thornley": "https://datacomgroup.atlassian.net/wiki/people/62a65fd8188d08006fe06fc2",
+  "Harrison Bland": "https://datacomgroup.atlassian.net/wiki/people/712020:f8283e50-5198-4bc0-b519-63b9e88649fd",
+  "Dipesh Trikam": "https://datacomgroup.atlassian.net/wiki/people/557058:e9d25d3a-2620-4614-b9ff-ee3ec2eb3a1b",
+  "Kieran Sinclair": "https://datacomgroup.atlassian.net/wiki/people/712020:0d1ab0fb-43a0-44b4-947a-76c59f0c531b",
+  "Johnson Paku": "https://datacomgroup.atlassian.net/wiki/people/712020:b33ff689-852b-4bd8-9b93-4e3a96a16c4f",
+  "Jason Moss": "https://datacomgroup.atlassian.net/wiki/people/5ee93943b04ccf0aae6712f4",
+  "Jing Ling": "https://datacomgroup.atlassian.net/wiki/people/712020:9162bb60-f2eb-46e4-af8a-d5e3071bc7af",
+  "Victoria Marchant": "https://datacomgroup.atlassian.net/wiki/people/712020:60dcfff6-891f-4ce6-a516-b48caa3c617e",
+  "Matt Shepheard": "https://datacomgroup.atlassian.net/wiki/people/5afb56dda949ba6b59f6a5e7",
+};
+
+const SLUG_AUTHORS: Record<string, string> = {
+  "api-reference-zendesk-sitc": "Dipesh Trikam",
+  "architecture-conver-zendesk-sitc-integration": "Dipesh Trikam",
+  "autodocx-conver-qa-test-plan": "Kieran Sinclair",
+  "autodocx-v1-2-conver-qa-test-plan": "Johnson Paku",
+  "conver-agents": "Matt Shepheard",
+  "conver-assistants-menu": "Harrison Bland",
+  "conver-audit-phase-b-v1": "Harrison Bland",
+  "conver-backlog-snapshot-sept-2025": "Joe Thornley",
+  "conver-code-interpreter-qa-jan-2026": "Kieran Sinclair",
+  "conver-code-interpreter-qa-nov-2025": "Kieran Sinclair",
+  "conver-faq-qna-bot-testing": "Kieran Sinclair",
+  "conver-guide-feature-flags-qa-environment": "Kieran Sinclair",
+  "conver-intro-agent-handoffs-passthroughs": "Kieran Sinclair",
+  "conver-knowledge-base-test-qna-sets": "Harrison Bland",
+  "conver-knowledge-hub": "Harrison Bland",
+  "conver-memories-acceptance-criteria-test-plan": "Kieran Sinclair",
+  "conver-pilot-production-server-migration": "Jing Ling",
+  "conver-platform-architecture-explained-simply": "Dipesh Trikam",
+  "conver-platform-enterprise-architecture": "Dipesh Trikam",
+  "conver-platform-redevelopment-guide": "Dipesh Trikam",
+  "conver-playbook-for-certification": "Joe Thornley",
+  "conver-policy-chat-bot-poc": "Johnson Paku",
+  "conver-prod-token-consumption-audit": "Harrison Bland",
+  "conver-quick-smoke-test-checklist": "Kieran Sinclair",
+  "conver-risk-review-nov-2025": "Joe Thornley",
+  "conver-serverless-enterprise-architecture": "Dipesh Trikam",
+  "conver-tool-integration-guide": "Dipesh Trikam",
+  "datacom-chat-business-case-production": "Joe Thornley",
+  "entra-id-permissions-request-for-conver": "Dipesh Trikam",
+  "librechat-changes-merge-plan-for-conver": "Jing Ling",
+  "overview-hyperscaler-tcs-commercialising-conver": "Joe Thornley",
+  "pathway-to-security-and-compliance-for-conver": "Joe Thornley",
+  "practical-guide-using-conver-securely": "Joe Thornley",
+  "roadmap-draft": "Jason Moss",
+  "roadmap-librechat-2025": "Victoria Marchant",
+  "sharepoint-conver-integration-design-proposal-1": "Jason Moss",
+  "sharepoint-integration-for-conver-proposal-2": "Jason Moss",
+  "spp-insights-governance-summary": "Dipesh Trikam",
+  "spp-insights-production-architecture": "Dipesh Trikam",
+  "spp-insights-security-implementation-guide": "Dipesh Trikam",
+  "spp-openair-conver-integration": "Dipesh Trikam",
+  "technical-operations-security-guide": "Johnson Paku",
+  "zendesk-sitc-access-control-security": "Dipesh Trikam",
+  "zendesk-sitc-available-tools-capabilities": "Dipesh Trikam",
+  "zendesk-sitc-azure-well-architected-deployment": "Dipesh Trikam",
+  "zendesk-sitc-conver-integration": "Dipesh Trikam",
+  "zendesk-sitc-technical-details": "Dipesh Trikam",
+  "conver-analysis-presentation": "Joe Thornley",
+};
+
+export function getAuthorForSlug(slug: string): AuthorInfo | null {
+  const name = SLUG_AUTHORS[slug];
+  if (!name) return null;
+  return { name, profileUrl: PROFILES[name] || "" };
+}

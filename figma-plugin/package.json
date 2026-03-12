@@ -1,0 +1,15 @@
+{
+  "name": "datacom-presentation-content",
+  "version": "1.0.0",
+  "description": "Figma plugin to paste presentation content (MD/JSON) and apply to Figma frames",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.123.0",
+    "typescript": "^5.9.3"
+  }
+}

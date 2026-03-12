@@ -1,0 +1,209 @@
+import fs from "fs";
+import path from "path";
+import { parseMarkdownToReport } from "@/lib/parse-markdown";
+import {
+  PresentationGallery,
+  type PresentationEntry,
+} from "@/components/presentation-gallery";
+
+const PRESENTATIONS_DIRS = [
+  path.join(process.cwd(), "content", "presentations"),
+  path.join(process.cwd(), "content", "detailed-presentations"),
+  path.join(process.cwd(), "content", "agent-library-presentations"),
+  path.join(process.cwd(), "content", "servicenow-presentations"),
+  path.join(process.cwd(), "content", "product-hub-presentations"),
+  path.join(process.cwd(), "content", "products"),
+];
+
+const PRODUCT_TAGS: Record<string, { status: string; maturity: string }> = {
+  "conver-capability-page": { status: "Production", maturity: "L4" },
+  "conver-capability-page-stakeholder": { status: "Production", maturity: "L4" },
+  "taco-capability-page": { status: "Production", maturity: "L4" },
+  "taco-capability-page-stakeholder": { status: "Production", maturity: "L4" },
+  "agent-library-capability-page": { status: "Production", maturity: "L3" },
+  "agent-library-capability-page-stakeholder": { status: "Production", maturity: "L3" },
+  "event-incident-clustering-capability-page": { status: "POC", maturity: "L1" },
+  "event-incident-clustering-capability-page-stakeholder": { status: "POC", maturity: "L1" },
+  "copilot-email-agent-capability-page": { status: "POC", maturity: "L1" },
+  "copilot-email-agent-capability-page-stakeholder": { status: "POC", maturity: "L1" },
+};
+
+const PINNED_SLUGS = new Set([
+  // ServiceNow / GITTSP
+  "gittsp-project-initiation-document",
+  "gittsp-draft-hl-business-case",
+  "gittsp-project-governance",
+  "gittsp-transition-plan-group-tech-eas-to-servicenow",
+  "gittsp-csdm-and-services-modelling",
+  "gittsp-zero-touch-service-desk",
+  "gittsp-change-management-plan-overview",
+  "gittsp-current-state-discovery-approach",
+  "gittsp-services-led-model-discovery-approach",
+  "gittsp-lessons-learned-from-fsd-transitions",
+  "gittsp-project-resource-usage-and-roles",
+  // Conver
+  "ai-capability-vending-machine-team-guidance",
+  "conver-15m-value-case",
+  "datacom-chat-business-case-production",
+  "conver-platform-enterprise-architecture",
+  "conver-roi-stakeholder-presentation",
+  "roadmap-draft",
+  "pathway-to-security-and-compliance-for-conver",
+  "conver-risk-review-nov-2025",
+  "conver-serverless-enterprise-architecture",
+  // Agent Library
+  "agent-library-overview",
+  "agent-library-high-level-architecture",
+  "agent-library-getting-started",
+  "agent-library-ciso-approval-request",
+  "agent-library-deployment-guide-production",
+  "agent-library-security-remediation-report",
+  "agent-library-complete-features-timeline",
+  // Product Hub
+  "ai-product-hub-team-guidance",
+  "conver-product-page",
+  "conver-marketing-guide",
+  "taco-product-page",
+  "taco-business-case",
+  "taco-personas-jtbd",
+  "agent-library-product-page",
+  "agent-library-business-case",
+  // Capability Pages — Landing Page
+  "conver-capability-page",
+  "taco-capability-page",
+  "agent-library-capability-page",
+  "event-incident-clustering-capability-page",
+  "copilot-email-agent-capability-page",
+  // Capability Pages — Stakeholder Variants
+  "conver-capability-page-stakeholder",
+  "taco-capability-page-stakeholder",
+  "agent-library-capability-page-stakeholder",
+  "event-incident-clustering-capability-page-stakeholder",
+  "copilot-email-agent-capability-page-stakeholder",
+]);
+
+const DIR_CATEGORY: Record<string, string> = {
+  presentations: "conver",
+  "detailed-presentations": "conver",
+  "agent-library-presentations": "agent-library",
+  "servicenow-presentations": "servicenow",
+  "product-hub-presentations": "product-hub",
+  products: "products",
+};
+
+function parseDateToTimestamp(dateStr: string): number {
+  if (!dateStr || dateStr === "2026") return 0;
+
+  const direct = Date.parse(dateStr);
+  if (!isNaN(direct)) return direct;
+
+  const monthYear = dateStr.match(
+    /(?:(\d{1,2})\s+)?(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/i
+  );
+  if (monthYear) {
+    const day = monthYear[1] ? parseInt(monthYear[1]) : 1;
+    const month = new Date(`${monthYear[2]} 1, 2000`).getMonth();
+    return new Date(parseInt(monthYear[3]), month, day).getTime();
+  }
+
+  const yearOnly = dateStr.match(/(\d{4})/);
+  if (yearOnly) return new Date(parseInt(yearOnly[1]), 0, 1).getTime();
+
+  return 0;
+}
+
+function getEntries(): PresentationEntry[] {
+  const entries: PresentationEntry[] = [];
+  const seen = new Set<string>();
+
+  for (const dir of PRESENTATIONS_DIRS) {
+    const dirName = path.basename(dir);
+    const category = DIR_CATEGORY[dirName] || "conver";
+    try {
+      const files = fs
+        .readdirSync(dir)
+        .filter((f) => f.endsWith(".md") && f !== "INDEX.md")
+        .sort();
+
+      for (const file of files) {
+        const slug = file.replace(/\.md$/, "");
+        if (seen.has(slug)) continue;
+        seen.add(slug);
+
+        const md = fs.readFileSync(path.join(dir, file), "utf-8");
+        const report = parseMarkdownToReport(md);
+        const slideCount =
+          2 +
+          (report.context.body ? 1 : 0) +
+          (report.problem.body ? 1 : 0) +
+          report.observations.filter((o) => o.title !== "No observations found")
+            .length +
+          (report.proposal.body || report.proposal.bullets.length > 0 ? 1 : 0) +
+          (report.risks[0]?.title !== "No risks identified" ? 1 : 0) +
+          (report.nextSteps[0]?.label !== "Review document" ? 1 : 0);
+
+        entries.push({
+          slug,
+          title: report.title,
+          subtitle: report.subtitle,
+          date: report.date,
+          dateSort: parseDateToTimestamp(report.date),
+          slideCount,
+          source: dirName,
+          category,
+          pinned: PINNED_SLUGS.has(slug),
+          author: report.author.name,
+          tags: PRODUCT_TAGS[slug],
+        });
+      }
+    } catch {
+      // directory may not exist
+    }
+  }
+
+  return entries;
+}
+
+export const metadata = {
+  title: "Presentations — Datacom",
+  description: "Confluence documentation as interactive presentations",
+};
+
+export default function PresentationsIndex() {
+  const entries = getEntries();
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="max-w-5xl mx-auto px-6 py-16 md:py-24">
+        <div className="mb-12 text-center">
+          <svg
+            className="h-5 w-auto text-foreground mb-8 mx-auto"
+            viewBox="0 0 121.962 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-label="Datacom"
+          >
+            <path
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M0.0564 0.21891L0.43748 1.26032V22.8676L0 23.583H7.54483C12.7502 23.583 17.1677 18.9856 17.1677 11.2315C17.1677 5.6055 14.5522 0.49189 9.11959 0.21891L0.0564 0.21891ZM4.24219 2.4082H6.73036C10.3114 2.4082 12.9508 4.74701 12.9508 11.1983C12.9508 19.2262 9.90551 20.7542 6.40053 20.7542H4.24219V2.4082ZM41.587 2.35066H46.1771L46.888 2.89927L47.6194 0.222656H32.1136L31.6172 2.92542L32.8297 2.35065H37.2053V22.793L36.8798 23.5543H41.9321L41.587 22.793L41.587 2.35066ZM76.6064 19.7684C75.464 21.2433 74.0738 21.9424 72.499 21.9424C68.5891 21.9424 66.4572 18.2253 66.4572 12.3595C66.4572 7.31446 68.1593 2.06125 72.3726 2.06125C74.0234 2.06125 75.6451 3.1612 76.5876 5.01526H76.9431L76.9379 1.45944C75.464 0.3612 74.0234 0 72.3469 0C66.8135 0 62.2422 3.88385 62.2422 12.8396C62.2422 19.872 66.3547 24 71.7898 24C73.4885 24 75.2922 23.9892 76.8149 22.9252L76.8209 19.5711L76.6064 19.7684ZM97.1166 11.8145C97.0918 6.49545 94.9582 0 87.7219 0C81.4006 0 77.7188 5.12527 77.7188 11.9513C77.7188 19.7396 81.5014 24 87.1126 24C93.3322 24 97.1413 18.5063 97.1166 11.8145M87.5674 2.06055C91.374 2.06055 92.8966 6.73526 92.8966 11.1624C92.8966 16.8579 91.1458 21.9417 87.235 21.9417C83.4284 21.9417 81.9297 17.4065 81.9297 12.9462C81.9297 5.25972 84.0351 2.06056 87.5674 2.06056M109.926 16.8298L103.459 0.210938H99.9405L100.257 0.920777L98.7536 22.5209L98.4922 23.5442H101.206L102.22 8.96052L108.284 23.5442H109.762L115.728 9.07948L116.882 23.5442H121.963L121.688 22.5642L119.767 0.813608L119.944 0.210947H116.531L109.926 16.8298ZM28.3078 16.5741L30.4824 23.5443H35.4151L34.829 22.9219L27.3466 0.222656H23.1025L23.575 1.55967L16.636 22.8922L16.2344 23.5443H19.2703L21.4149 16.575L28.3078 16.5741ZM22.2031 13.8787L24.8494 5.63086L27.5238 13.8787H22.2031ZM55.668 16.5741L57.8418 23.5443H62.7745L62.1901 22.9219L54.7085 0.222656H50.4619L50.9344 1.55967L43.997 22.8922L43.5938 23.5443H46.6305L48.7743 16.575L55.668 16.5741ZM49.5703 13.8787L52.2183 5.63086L54.8919 13.8787H49.5703Z"
+              fill="currentColor"
+            />
+          </svg>
+          <h1 className="text-3xl md:text-5xl font-bold leading-tight mb-4">
+            Presentations
+          </h1>
+          <p className="text-lg text-foreground/60">
+            {entries.length} Confluence summaries as interactive presentations
+          </p>
+        </div>
+
+        <PresentationGallery entries={entries} />
+
+        <div className="mt-16 pt-8 border-t border-foreground/10 text-sm text-foreground/30 text-center">
+          <p>Source: Confluence documentation — auto-parsed from markdown</p>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', 'Montserrat', system-ui, sans-serif;
+    font-size: 12px;
+    color: #333;
+    padding: 16px;
+    background: #fff;
+  }
+  h2 { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+  h3 { font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #e5e5e5;
+  }
+  .tab {
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: #999;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: #333; }
+  .tab.active { color: #002BFE; border-bottom-color: #002BFE; }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  textarea {
+    width: 100%;
+    height: 180px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 10px;
+    font-family: 'SF Mono', 'Monaco', monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  textarea:focus { border-color: #002BFE; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: #002BFE; color: #fff; }
+  .btn-primary:hover { background: #0022CB; }
+  .btn-primary:disabled { background: #ddd; color: #999; cursor: not-allowed; }
+  .btn-secondary { background: #f0f0f0; color: #333; }
+  .btn-secondary:hover { background: #e5e5e5; }
+
+  .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+
+  .status {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .status-info { background: #EFF6FF; color: #002BFE; }
+  .status-success { background: #F0FDF4; color: #33913A; }
+  .status-error { background: #FEF2F2; color: #C80000; }
+
+  .mapping-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: 11px;
+  }
+  .mapping-table th {
+    text-align: left;
+    padding: 6px 8px;
+    background: #f5f5f5;
+    font-weight: 600;
+    border-bottom: 1px solid #e5e5e5;
+  }
+  .mapping-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: top;
+  }
+  .mapping-table td:first-child {
+    font-weight: 500;
+    white-space: nowrap;
+    color: #002BFE;
+    width: 40%;
+  }
+  .mapping-table td:last-child {
+    color: #666;
+    word-break: break-word;
+  }
+  .mapping-table tr.matched td:last-child { color: #33913A; font-weight: 500; }
+  .mapping-table tr.unmatched td:last-child { color: #999; font-style: italic; }
+
+  .section { margin-bottom: 16px; }
+
+  .frame-name {
+    display: inline-block;
+    padding: 3px 8px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+
+  .parsed-fields { margin-top: 10px; }
+  .field-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    margin: 2px;
+    background: #EFF6FF;
+    border-radius: 4px;
+    font-size: 10px;
+    color: #002BFE;
+    font-weight: 500;
+  }
+
+  .divider { border: none; border-top: 1px solid #e5e5e5; margin: 16px 0; }
+</style>
+</head>
+<body>
+
+<h2>Datacom Presentation Content</h2>
+
+<div class="tabs">
+  <button class="tab active" data-tab="paste">1. Paste Content</button>
+  <button class="tab" data-tab="map">2. Map & Apply</button>
+</div>
+
+<!-- Tab 1: Paste Content -->
+<div id="tab-paste" class="tab-content active">
+  <div class="section">
+    <h3>Paste markdown or JSON</h3>
+    <textarea id="content-input" placeholder="Paste your markdown (## 🎯 Context, ## 🔍 Problem, etc.) or JSON report content here..."></textarea>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" id="btn-parse">Parse Content</button>
+    <button class="btn btn-secondary" id="btn-load-example">Load Example</button>
+  </div>
+  <div id="parse-status"></div>
+  <div id="parsed-preview" class="parsed-fields"></div>
+</div>
+
+<!-- Tab 2: Map & Apply -->
+<div id="tab-map" class="tab-content">
+  <div class="section">
+    <h3>Select a frame in Figma, then scan</h3>
+    <div class="btn-row" style="margin-top:0">
+      <button class="btn btn-secondary" id="btn-scan">Scan Selected Frame</button>
+    </div>
+    <div id="scan-status"></div>
+  </div>
+
+  <div id="mapping-section" style="display:none">
+    <hr class="divider">
+    <h3>Layer → Content Mapping</h3>
+    <p style="color:#666; margin-bottom:8px;">Layers in the selected frame matched to your parsed content fields.</p>
+    <div id="frame-info"></div>
+    <table class="mapping-table" id="mapping-table">
+      <thead><tr><th>Figma Layer</th><th>Content Value</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-primary" id="btn-apply">Duplicate & Replace Text</button>
+    </div>
+    <div id="apply-status"></div>
+  </div>
+</div>
+
+<script>
+// State
+let parsedContent = {};
+let textLayers = [];
+
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// Parse content
+document.getElementById('btn-parse').addEventListener('click', () => {
+  const raw = document.getElementById('content-input').value.trim();
+  if (!raw) {
+    showStatus('parse-status', 'Paste some content first.', 'error');
+    return;
+  }
+
+  // Try JSON first
+  try {
+    const json = JSON.parse(raw);
+    parsedContent = flattenReport(json);
+    showParsedPreview();
+    showStatus('parse-status', `Parsed ${Object.keys(parsedContent).length} fields from JSON.`, 'success');
+    return;
+  } catch (e) { /* not JSON, try markdown */ }
+
+  // Parse markdown
+  parsedContent = parseMarkdown(raw);
+  const count = Object.keys(parsedContent).length;
+  if (count === 0) {
+    showStatus('parse-status', 'Could not parse any fields. Check format.', 'error');
+  } else {
+    showParsedPreview();
+    showStatus('parse-status', `Parsed ${count} fields from markdown.`, 'success');
+  }
+});
+
+// Load example
+document.getElementById('btn-load-example').addEventListener('click', () => {
+  document.getElementById('content-input').value = JSON.stringify({
+    title: "Conver Business Case",
+    subtitle: "Full company-wide rollout to all 6,500 employees.",
+    date: "January 2026",
+    author: { name: "Ben Schaumkel" },
+    context: {
+      heading: "Conver completed a successful beta with strong adoption",
+      body: "Built and validated on Azure with SSO, multi-model access, and agent capabilities."
+    },
+    problem: {
+      heading: "Three core problems demand an approved AI platform",
+      body: "Employees lack approved AI tools. Shadow AI creates security risk."
+    },
+    observations: [
+      { number: 1, title: "The ROI case is compelling", body: "826%–10,314% annual ROI." },
+      { number: 2, title: "Costs are token-dominated", body: "$905K–$1,685K Year-1." }
+    ],
+    proposal: {
+      heading: "Full rollout within 3–6 months",
+      body: "Approve investment, stand up Chatbot Ops team, execute change management.",
+      bullets: ["Year-1 investment", "2.5 FTE Ops team", ">70% adoption target"],
+      summary: "Delivers $15.6M–$78M annual value."
+    },
+    risks: [
+      { title: "Token cost overrun", body: "Variable costs may exceed projections." },
+      { title: "Low adoption", body: "Requires sustained manager-led promotion." }
+    ],
+    nextSteps: [
+      { step: 1, label: "Budget approval", description: "Secure Year-1 funding." },
+      { step: 2, label: "Staff Ops team", description: "Allocate 2.5 FTE." }
+    ],
+    closer: {
+      observation: "A material productivity investment with 800%+ ROI.",
+      body: "The primary challenge is adoption, not technology."
+    }
+  }, null, 2);
+});
+
+// Scan selected frame
+document.getElementById('btn-scan').addEventListener('click', () => {
+  parent.postMessage({ pluginMessage: { type: 'scan-selection' } }, '*');
+});
+
+// Apply content
+document.getElementById('btn-apply').addEventListener('click', () => {
+  if (Object.keys(parsedContent).length === 0) {
+    showStatus('apply-status', 'Parse content first (tab 1).', 'error');
+    return;
+  }
+
+  const mappings = [];
+  for (const layer of textLayers) {
+    const key = normalizeLayerName(layer.name);
+    if (parsedContent[key] !== undefined) {
+      mappings.push({ layerName: layer.name, value: String(parsedContent[key]) });
+    }
+  }
+
+  if (mappings.length === 0) {
+    showStatus('apply-status', 'No matching layers found. Rename Figma text layers to match field names (title, subtitle, context.heading, etc.).', 'error');
+    return;
+  }
+
+  parent.postMessage({ pluginMessage: { type: 'apply-content', mappings } }, '*');
+  showStatus('apply-status', 'Applying...', 'info');
+});
+
+// Messages from plugin code
+window.onmessage = (event) => {
+  const msg = event.data.pluginMessage;
+  if (!msg) return;
+
+  if (msg.type === 'scan-result') {
+    if (msg.error) {
+      showStatus('scan-status', msg.error, 'error');
+      return;
+    }
+    textLayers = msg.textLayers;
+    document.getElementById('mapping-section').style.display = 'block';
+    document.getElementById('frame-info').innerHTML =
+      '<span class="frame-name">' + escapeHtml(msg.frameName) + '</span>' +
+      ' — ' + textLayers.length + ' text layer' + (textLayers.length !== 1 ? 's' : '');
+
+    renderMappingTable();
+    showStatus('scan-status', `Found ${textLayers.length} text layers.`, 'success');
+  }
+
+  if (msg.type === 'apply-result') {
+    showStatus('apply-status', `Done — replaced ${msg.replaced} text layer${msg.replaced !== 1 ? 's' : ''} in duplicated frame.`, 'success');
+  }
+};
+
+// --- Helpers ---
+
+function flattenReport(obj, prefix) {
+  prefix = prefix || '';
+  const result = {};
+
+  for (const [key, value] of Object.entries(obj)) {
+    const path = prefix ? prefix + '.' + key : key;
+
+    if (Array.isArray(value)) {
+      value.forEach((item, i) => {
+        if (typeof item === 'object' && item !== null) {
+          Object.assign(result, flattenReport(item, path + '[' + i + ']'));
+        } else {
+          result[path + '[' + i + ']'] = String(item);
+        }
+      });
+    } else if (typeof value === 'object' && value !== null) {
+      Object.assign(result, flattenReport(value, path));
+    } else {
+      result[path] = String(value);
+    }
+  }
+
+  return result;
+}
+
+function parseMarkdown(md) {
+  const fields = {};
+  const lines = md.split('\n');
+  let currentSection = '';
+  let currentBody = [];
+  let obsIndex = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    // Title: # Title
+    if (/^# /.test(line) && !currentSection) {
+      fields['title'] = line.replace(/^# /, '');
+      continue;
+    }
+
+    // Subtitle: > text
+    if (/^> /.test(line) && fields['title'] && !fields['subtitle']) {
+      fields['subtitle'] = line.replace(/^> /, '');
+      continue;
+    }
+
+    // Section headers
+    if (/^## 🎯/.test(line) || /^## .*context/i.test(line)) {
+      flushBody(fields, currentSection, currentBody);
+      currentSection = 'context';
+      currentBody = [];
+      continue;
+    }
+    if (/^## 🔍/.test(line) || /^## .*problem/i.test(line)) {
+      flushBody(fields, currentSection, currentBody);
+      currentSection = 'problem';
+      currentBody = [];
+      continue;
+    }
+    if (/^## 📋/.test(line) || /^## .*observation/i.test(line)) {
+      flushBody(fields, currentSection, currentBody);
+      currentSection = 'observations';
+      currentBody = [];
+      obsIndex = 0;
+      continue;
+    }
+    if (/^## 💡/.test(line) || /^## .*proposal/i.test(line)) {
+      flushBody(fields, currentSection, currentBody);
+      currentSection = 'proposal';
+      currentBody = [];
+      continue;
+    }
+    if (/^## ⚠️/.test(line) || /^## .*risk/i.test(line)) {
+      flushBody(fields, currentSection, currentBody);
+      currentSection = 'risks';
+      currentBody = [];
+      continue;
+    }
+    if (/^## ✅/.test(line) || /^## .*next.?step/i.test(line)) {
+      flushBody(fields, currentSection, currentBody);
+      currentSection = 'nextSteps';
+      currentBody = [];
+      continue;
+    }
+    if (/^## 🔑/.test(line) || /^## .*clos/i.test(line)) {
+      flushBody(fields, currentSection, currentBody);
+      currentSection = 'closer';
+      currentBody = [];
+      continue;
+    }
+
+    // Sub-headings within sections
+    if (/^### /.test(line) && currentSection) {
+      flushBody(fields, currentSection, currentBody);
+      currentBody = [];
+      fields[currentSection + '.heading'] = line.replace(/^### /, '');
+      continue;
+    }
+
+    // Observation items: **N. Title**
+    if (/^\*\*\d+\./.test(line) && currentSection === 'observations') {
+      flushBody(fields, 'observations[' + obsIndex + ']', currentBody);
+      currentBody = [];
+      const title = line.replace(/^\*\*\d+\.\s*/, '').replace(/\*\*$/, '');
+      fields['observations[' + obsIndex + '].title'] = title;
+      fields['observations[' + obsIndex + '].number'] = String(obsIndex + 1);
+      obsIndex++;
+      continue;
+    }
+
+    if (line && line !== '---') {
+      currentBody.push(line);
+    }
+  }
+  flushBody(fields, currentSection, currentBody);
+  return fields;
+}
+
+function flushBody(fields, section, body) {
+  if (!section || body.length === 0) return;
+  const text = body.join(' ').replace(/\s+/g, ' ').trim();
+  if (!text) return;
+
+  if (section.startsWith('observations[')) {
+    fields[section + '.body'] = text;
+  } else if (!fields[section + '.heading'] && !fields[section + '.body']) {
+    fields[section + '.heading'] = text.split('.')[0] + '.';
+    if (text.split('.').length > 1) {
+      fields[section + '.body'] = text;
+    }
+  } else if (!fields[section + '.body']) {
+    fields[section + '.body'] = text;
+  }
+}
+
+function normalizeLayerName(name) {
+  return name
+    .replace(/\s+/g, '')
+    .replace(/[-_]/g, '.')
+    .toLowerCase();
+}
+
+function showParsedPreview() {
+  const container = document.getElementById('parsed-preview');
+  const tags = Object.keys(parsedContent)
+    .map(k => '<span class="field-tag">' + escapeHtml(k) + '</span>')
+    .join('');
+  container.innerHTML = '<h3 style="margin-top:10px">Parsed fields</h3>' + tags;
+}
+
+function renderMappingTable() {
+  const tbody = document.querySelector('#mapping-table tbody');
+  tbody.innerHTML = '';
+
+  for (const layer of textLayers) {
+    const key = normalizeLayerName(layer.name);
+    const matched = parsedContent[key] !== undefined;
+    const value = matched ? parsedContent[key] : layer.characters;
+    const tr = document.createElement('tr');
+    tr.className = matched ? 'matched' : 'unmatched';
+    tr.innerHTML =
+      '<td>' + escapeHtml(layer.name) + '</td>' +
+      '<td>' + escapeHtml(truncate(value, 80)) +
+      (matched ? ' ✓' : ' (unchanged)') + '</td>';
+    tbody.appendChild(tr);
+  }
+}
+
+function showStatus(id, message, type) {
+  document.getElementById(id).innerHTML =
+    '<div class="status status-' + type + '">' + escapeHtml(message) + '</div>';
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function truncate(str, max) {
+  return str.length > max ? str.slice(0, max) + '…' : str;
+}
+</script>
+</body>
+</html>
