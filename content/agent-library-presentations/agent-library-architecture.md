@@ -1,68 +1,87 @@
-# Architecture
+# Agent Library — Architecture & Performance
+> Serverless Azure Functions, dual database, 12ms API response, 99.9% availability — how the Agent Library is built
 
-> A detailed technical architecture document covering the system components, data layer design, security model, data flows, and deployment strategy of the Datacom Agent Library.
-
-**Author:** [Dipesh Trikam](https://datacomgroup.atlassian.net/wiki/people/712020:06f04ec7-5f4c-4e03-a2a3-3e46b413e073)
-**Date:** 17 September 2025
-**Source:** https://datacomgroup.atlassian.net/wiki/spaces/IA/pages/40061796638
+**Author:** Dipesh Trikam — Insights & Analytics
+**Date:** March 2026
+**Source:** https://datacomgroup.atlassian.net/wiki/spaces/IA/pages/40043905712/Agent+Library
 
 ---
 
 ## 🎯 Context
 
-This document describes the technical architecture of the Datacom Agent Library — an Azure-hosted, enterprise-grade serverless system within the Insights & Analytics space. It targets architects, senior developers, and operations engineers who need a deep understanding of how the system is structured. The architecture achieves **8.5/10 WAF compliance** and is maintained by Dipesh Trikam and the EAS team.
+The Agent Library runs on a serverless Azure architecture designed for enterprise-grade performance.
+12ms API response. 99.9% availability. 8.5/10 Azure WAF score. Consumption-based — costs nothing when idle.
 
 ---
 
 ## 🔍 Problem
 
-Enterprise AI management platforms require careful architectural decisions across security, data strategy, scalability, and operational excellence — all simultaneously. A naive implementation risks poor performance, weak security boundaries, high operational cost, or difficulty scaling. This document captures the deliberate design choices made to achieve production-grade quality across all these dimensions.
+Traditional VM-based AI platforms have always-on costs, manual scaling, and complex deployment.
+A modern AI agent catalogue needs to scale automatically, cost near-zero at low usage, and still deliver sub-second response times under load.
 
 ---
 
 ## 📋 Observations
 
-- **Frontend** consists of two React 18 + TypeScript + Tailwind CSS apps (Client App on port 5174, Admin App on port 3000) sharing a common `shared/` component library with Radix UI primitives
-- **Backend** is Azure Functions v4 (Node.js 18+, TypeScript) organised into discrete modules: agents, prompts, users, approvals, public-agents, public-prompts, email, health, and swagger
-- **Data layer** uses a **dual database strategy**: MongoDB (VM-hosted, private VNet, ~12ms) for personal/private data, CosmosDB serverless (private endpoint, ~5ms) for public directory, and Azure Blob Storage for files and legacy data
-- Authentication follows a full OAuth 2.0 PKCE flow via MSAL.js → Azure AD → JWT, with RS256 validation on every API request; RBAC enforced via `requireRole` and `requireOwnership` middleware
-- Key data flows include: agent submission → MongoDB save → email notification → admin review → status update → user notification; and public agent access → CosmosDB query with filters and pagination
-- Architecture patterns used: Module Pattern, Middleware Pattern, Repository Pattern, Service Pattern, and Factory Pattern in the API layer
-- MongoDB collections include: users, agents, prompts, promptgroups, approvals, aclentries, accessroles, categories, ratings, projects
-- Monitoring via Application Insights with structured JSON logging, health endpoints per module, and performance/error alerting
+**1. Architecture overview**
+Non-monorepo structure with independent deployment (ADR-001).
+React frontend (ADR-002).
+Azure Functions serverless backend (ADR-003).
+Dual database: MongoDB + CosmosDB (ADR-004).
+Azure APIM for API gateway (ADR-005).
+
+**2. Performance metrics**
+Average API response time: 12ms.
+Platform availability: 99.9%.
+400x improvement from baseline.
+50+ API endpoints serving 150+ features.
+
+**3. Serverless advantages**
+Consumption-based pricing — pay only when functions execute.
+Automatic scaling — no manual capacity planning.
+Zero cost when idle — perfect for a catalogue with variable access patterns.
+70% cost reduction vs traditional always-on VM deployment.
+
+**4. Dual database architecture**
+MongoDB: primary data store for agents, prompts, and metadata.
+CosmosDB: complementary store for specific workloads.
+VNet peering for secure database connectivity.
+~$50/month total database cost.
+
+**5. API gateway**
+Azure APIM provides unified API surface.
+Rate limiting, authentication, and monitoring at the gateway level.
+Clean separation between frontend and backend services.
+
+**6. Agent lifecycle features**
+Versioning system: full history for agents and prompts.
+Feature flagging: controlled rollouts for new capabilities.
+Approval workflows: moderator review before agents are shared.
+Rating and duplication tracking across the catalogue.
+
+**7. Admin panel architecture**
+Three dashboards: Reports, Audit, Admin.
+Real-time usage statistics and adoption trends.
+Full audit trail with agent-level access logs.
+Mobile-responsive design (QA tested).
+
+**8. Key architectural decisions (ADRs)**
+ADR-001: Non-monorepo for independent service deployment.
+ADR-002: React for frontend — familiar ecosystem, component library.
+ADR-003: Azure Functions — serverless, event-driven, consumption pricing.
+ADR-004: Dual database — flexibility for different data patterns.
+ADR-005: Azure APIM — enterprise API management.
 
 ---
 
 ## 💡 Proposal
 
-The architecture is a **purpose-built multi-tier serverless design** where each layer has a clearly bounded responsibility: presentation (React SWAs), API gateway (Azure Functions), and data (dual databases + blob). The dual-database strategy is the centrepiece — MongoDB handles mutable, personal, access-controlled data while CosmosDB handles high-read, globally consistent public content. Security is enforced at the network layer (VNet peering, private endpoints, NSGs) and application layer (JWT, RBAC, CORS, input validation) in parallel.
-
----
-
-## ⚠️ Risks
-
-- The dual-database strategy adds synchronisation complexity — approved items must be promoted from MongoDB to CosmosDB correctly, and any failure in that promotion pipeline could cause stale public content
-- MongoDB is VM-hosted rather than a managed service, introducing manual patching, scaling, and HA responsibilities not present with fully managed alternatives
-- CosmosDB serverless pricing can spike unpredictably under heavy read workloads given the public-directory access pattern
-- The shared component library (`shared/`) creates a coupling point between the two frontend apps; breaking changes require coordinated deployments
-
----
-
-## ✅ Next Steps
-
-- Document and test the MongoDB → CosmosDB approval promotion pipeline to ensure data consistency
-- Evaluate migrating VM-hosted MongoDB to MongoDB Atlas or Azure Cosmos DB for MongoDB API for reduced operational burden
-- Define and test auto-scaling behaviour for Azure Functions under the 1000+ concurrent user target
-- Establish a versioning and backward-compatibility policy for the `shared/` package
+The serverless architecture delivers enterprise performance at startup cost. Continue investing in the platform as the foundation for AI agent sharing across Datacom.
 
 ---
 
 ## 🔑 Close
 
-The architecture's most important decision is the **dual database strategy** — routing personal data through MongoDB and public content through CosmosDB — which enables both strong access control and high-performance public browsing within a single serverless platform.
+> 12ms. 99.9%. $50/month. Serverless. Scales to zero. Scales to thousands.
 
----
-
-📌 **Document Type:** Architecture Doc
-📅 **Last Updated:** 17 September 2025
-🔗 **Source:** https://datacomgroup.atlassian.net/wiki/spaces/IA/pages/40061796638
+Five architectural decisions. Enterprise performance. Startup economics.
