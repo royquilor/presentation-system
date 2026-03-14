@@ -1,8 +1,7 @@
 # Agent Library
+> End-to-end overview: Create, Share, Review, and Request/Clone — MongoDB as source of truth, Blob for shared artifacts
 
-> A reference page documenting the end-to-end lifecycle of AI agents in the Datacom Agent Library, from creation in Datacom Chat through sharing, review, and cloning.
-
-**Author:** [Dipesh Trikam](https://datacomgroup.atlassian.net/wiki/people/712020:06f04ec7-5f4c-4e03-a2a3-3e46b413e073)
+**Author:** Dipesh Trikam — Insights & Analytics
 **Date:** 17 September 2025
 **Source:** https://datacomgroup.atlassian.net/wiki/spaces/IA/pages/40043905712
 
@@ -10,58 +9,153 @@
 
 ## 🎯 Context
 
-The Agent Library is an internal Datacom platform within the Insights & Analytics space, enabling teams to create, share, and reuse AI agents organisation-wide. Agents are authored in **Datacom Chat** (the source of truth via MongoDB) and governed through a structured approval workflow before appearing in the public directory. The page was last maintained by Dipesh Trikam and captures the core data model and flow as of mid-2025.
+The Agent Library lives in the Insights & Analytics space under AI Projects → Active.
+UAT environments are available for testing the full flow: admin app for governance, client app for discovery and request.
+
+UAT admin app: [https://zealous-mushroom-03700c50f.2.azurestaticapps.net/](https://zealous-mushroom-03700c50f.2.azurestaticapps.net/)
+
+UAT client app: [https://gentle-wave-0ea31450f.2.azurestaticapps.net/](https://gentle-wave-0ea31450f.2.azurestaticapps.net/)
 
 ---
 
 ## 🔍 Problem
 
-Without a governed sharing mechanism, AI agents created by individuals remain siloed and cannot be safely discovered or reused by other teams. There was a need to define a clear lifecycle — from private creation to approved, shareable artefact — with a data model that supports both personal and collaborative use.
+Teams need a governed way to author, share, review, and consume AI agents across the organisation.
+Without a clear flow, agents stay siloed. Without approval gates, unvetted agents proliferate.
+The system must separate personal ownership (MongoDB) from shared discovery (Blob) and enforce review before listing.
 
 ---
 
 ## 📋 Observations
 
-- Agents are created and stored in MongoDB via Datacom Chat; MongoDB is the single source of truth for agent data
-- Sharing triggers a **Blob clone** of the agent as a review artefact with `status: "pending"`, keeping approval state separate from the live Mongo record
-- Reviewers approve (→ `directory/approved/{agentId}.json`) or reject (→ `directory/rejected/{shareId}.json`) from the Pending page
-- The **Request** action clones the agent in MongoDB with a new `_id` and adds the requester as an author — it does not bypass the approval flow for public listing
-- The `Agent` schema includes rich metadata: category, type, provider, model, tools, tags, capabilities, versioning, and a `sharing` intent field (`"Private"` | `"Public"`)
-- The `SharedAgent` schema extends `Agent` with `shareId`, `originalAgentId`, `status`, `statusHistory`, and `clonedBy`, enabling full audit history
-- Both UAT apps (admin and client) are live on Azure Static Web Apps
+**1. Create (Datacom Chat)**
+
+Agents are authored in **Datacom Chat**.
+Datacom Chat writes and updates the **MongoDB** `agents` **collection** as the source of truth.
+All agent metadata, instructions, tools, and configuration live in the Mongo document.
+
+**2. Share (from Agent Library → My Agents)**
+
+My Agents reads from MongoDB.
+When a user clicks **Share**, the backend **clones** a snapshot to **Blob** as a **review artifact** with `status: "pending"`.
+The Pending page lists all pending artifacts from Blob for reviewer action.
+
+**3. Review (Pending page)**
+
+Reviewer **Approves** → artifact moved to `directory/approved/{agentId}.json`.
+Reviewer **Rejects** → artifact moved to `directory/rejected/{shareId}.json`.
+**My Agents** decorates each Mongo card with status from Blob: Approved, Pending, or Not shared.
+
+**4. Request / Clone (from Agent Directory or My Agents)**
+
+When a user clicks **Request** (e.g., from **Agent Directory** or **My Agents**):
+Backend **clones the agent in MongoDB**, generating a **new** `_id`.
+The **requester's user ID** is added to authorship (see schema below).
+The clone is **private** by default (not in Blob). It appears in the **requester's My Agents**.
+If the requester wants it listed for others, they must **Share** that clone (which goes through the same Pending → Review flow).
+
+**5. Source of truth split**
+
+MongoDB holds the canonical agent data created by Datacom Chat.
+Blob holds shared artifacts with pending, approved, or rejected status.
+My Agents and Agent Directory reconcile both sources to show the correct status per agent.
+
+**6. Request semantics**
+
+**Request** = personal copy in Mongo with the requester as an author.
+**Sharing** still goes through Blob and approval — a requested clone does not automatically appear in the directory.
 
 ---
 
 ## 💡 Proposal
 
-The platform implements a **two-store architecture**: MongoDB holds all live agent data and personal copies, while Azure Blob Storage holds approval artefacts. This cleanly separates operational data from governance state, allowing the directory to show only approved content while preserving the full sharing history. Requesting an agent creates a personal copy rather than a direct reference, ensuring authorship and independent lifecycle management.
+Treat MongoDB as the single source of truth for agent definitions.
+Use Blob as a staging layer for review and approval before agents appear in the shared directory.
+Request creates a personal copy; Share creates a reviewable artifact. Both flows are explicit and auditable.
+
+---
+
+## 📊 Data Models
+
+**MongoDB — Agent (created by Datacom Chat)**
+
+```typescript
+export interface Agent {
+  _id: string;
+  name: string;
+  description: string;
+  category: string; // e.g. "Utilities"
+  type: string; // e.g. "Agent", "Retriever"
+  instructions: string;
+  provider?: string; // e.g. "OpenAI"
+  model?: string; // e.g. "gpt-4o-mini"
+  tools: string[];
+  tags: string[];
+  capabilities: string[];
+  author: string; // from Datacom Chat
+  authorContact?: string;
+  version: string; // e.g. "v1.0"
+  createdAt: string; // ISO
+  updatedAt?: string; // ISO
+  source: {
+    provider: "datacom-chat";
+    externalId?: string; // id in Datacom Chat, if any
+  };
+  sharing: "Private" | "Public"; // author intent; directory still needs approval
+}
+```
+
+**Blob — SharedAgent (review artifact)**
+
+```typescript
+export interface SharedAgent extends Agent {
+  shareId: string;
+  originalAgentId: string; // Mongo _id
+  status: "pending" | "approved" | "rejected" | "disabled";
+  statusHistory: Array<{
+    status: SharedAgent["status"];
+    at: string;
+    by: string;
+    notes?: string;
+  }>;
+  clonedAt: string;
+  clonedBy: string; // user id/email from MSAL
+  createdVia: "datacom-chat";
+}
+```
 
 ---
 
 ## ⚠️ Risks
 
-- The page is marked **Archived**, suggesting the documented flow may have been superseded by a newer implementation
-- The Blob-based approval store introduces a secondary source of state; consistency between MongoDB and Blob must be carefully maintained on failures
-- "Request = personal copy" means popular agents can generate many near-identical Mongo documents, potentially creating storage and discovery clutter
-- No mention of conflict resolution if the original agent is updated after a clone is requested
+**Dual storage consistency** MongoDB and Blob must stay in sync for status display. If Blob is slow or misconfigured, My Agents may show stale or incorrect status.
+
+**Clone proliferation** Each Request creates a new Mongo document. Users may accumulate many clones over time; consider lifecycle or archival policies.
+
+**Review bottleneck** All shared agents go through the Pending page. A single reviewer could become a bottleneck if volume grows.
+
+**Author intent vs approval** The `sharing` field reflects author intent (Private/Public), but directory approval is separate. Authors may expect Public to mean immediately visible; it does not.
 
 ---
 
 ## ✅ Next Steps
 
-- Confirm whether the archived flow has been replaced and update documentation accordingly
-- Review Blob-Mongo consistency handling, particularly around failed approval state transitions
-- Establish a clone de-duplication or lineage-tracking strategy to manage proliferating copies
-- Ensure the `SharedAgent.statusHistory` audit trail is surfaced in the admin UI for compliance visibility
+1. **Validate UAT** — Exercise the full Create → Share → Review → Request flow in both UAT apps.
+2. **Audit status sync** — Confirm My Agents correctly decorates cards from Blob status.
+3. **Document Request vs Share** — Ensure user-facing copy clearly explains that Request = personal copy, Share = submit for review.
+4. **Review capacity** — Assess reviewer workload and consider multiple moderators or automated checks.
 
 ---
 
 ## 🔑 Close
 
-The Agent Library's core insight is that **"Request" grants a personal Mongo copy** while **"Share" gates public visibility** via Blob-based approval — a clean separation of personal use from governed distribution.
+> **Request** = personal copy in Mongo with the requester as an author. **Sharing** still goes through Blob and approval.
+
+MongoDB is the source of truth. Blob is the approval layer. Create in Datacom Chat, Share for review, Request for a personal copy.
+The flow is explicit, auditable, and separates ownership from discovery.
 
 ---
 
-📌 **Document Type:** Architecture / Workflow Reference (Archived)
+📌 **Document Type:** Presentation — Agent Library End-to-End Overview
 📅 **Last Updated:** 17 September 2025
 🔗 **Source:** https://datacomgroup.atlassian.net/wiki/spaces/IA/pages/40043905712

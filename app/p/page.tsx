@@ -13,6 +13,7 @@ const PRESENTATIONS_DIRS = [
   path.join(process.cwd(), "content", "servicenow-presentations"),
   path.join(process.cwd(), "content", "product-hub-presentations"),
   path.join(process.cwd(), "content", "products"),
+  path.join(process.cwd(), "content", "external-reports"),
 ];
 
 const PRODUCT_TAGS: Record<string, { status: string; maturity: string }> = {
@@ -89,6 +90,7 @@ const DIR_CATEGORY: Record<string, string> = {
   "servicenow-presentations": "servicenow",
   "product-hub-presentations": "product-hub",
   products: "products",
+  "external-reports": "external",
 };
 
 function parseDateToTimestamp(dateStr: string): number {
@@ -132,12 +134,19 @@ function getEntries(): PresentationEntry[] {
 
         const md = fs.readFileSync(path.join(dir, file), "utf-8");
         const report = parseMarkdownToReport(md);
+        let flexSlides = 0;
+        if (report.flexSections) {
+          for (const f of report.flexSections) {
+            flexSlides += f.items.length > 0 ? f.items.length : f.body ? 1 : 0;
+          }
+        }
         const slideCount =
           2 +
           (report.context.body ? 1 : 0) +
           (report.problem.body ? 1 : 0) +
           report.observations.filter((o) => o.title !== "No observations found")
             .length +
+          flexSlides +
           (report.proposal.body || report.proposal.bullets.length > 0 ? 1 : 0) +
           (report.risks[0]?.title !== "No risks identified" ? 1 : 0) +
           (report.nextSteps[0]?.label !== "Review document" ? 1 : 0);

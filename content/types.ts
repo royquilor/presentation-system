@@ -52,6 +52,14 @@ export type NextStep = {
   description: string;
 };
 
+export type FlexSection = {
+  emoji: string;
+  heading: string;
+  body: string;
+  items: { number: number; title: string; body: string; style?: SlideStyle }[];
+  style?: SlideStyle;
+};
+
 export type Report = {
   title: string;
   subtitle: string;
@@ -88,6 +96,8 @@ export type Report = {
 
   nextSteps: NextStep[];
   nextStepsStyle?: SlideStyle;
+
+  flexSections?: FlexSection[];
 
   closer: {
     observation: string;

@@ -1,4 +1,38 @@
-import type { Report } from "@/content/types";
+import type { Report, FlexSection, SlideStyle, SlideBackground, SlideMedia } from "@/content/types";
+
+function parseStyleComment(line: string): { key: "background" | "textColor" | "labelColor"; value: SlideBackground | string } | null {
+  const match = line.match(/^<!--\s*(bg|text|label):\s*(.+?)\s*-->$/);
+  if (!match) return null;
+  const [, directive, raw] = match;
+  const val = raw.trim();
+
+  if (directive === "bg") {
+    if (val.startsWith("solid ")) {
+      return { key: "background", value: { type: "solid", color: val.slice(6).trim() } };
+    }
+    if (val.startsWith("gradient ")) {
+      const parts = val.slice(9).trim().split(/\s+/);
+      return { key: "background", value: { type: "gradient", from: parts[0], to: parts[1], direction: parts[2] || "135deg" } };
+    }
+    if (val.startsWith("image ")) {
+      const parts = val.slice(6).trim().split(/\s+/);
+      return { key: "background", value: { type: "image", src: parts[0], overlay: parts[1] } };
+    }
+  }
+  if (directive === "text") return { key: "textColor", value: val };
+  if (directive === "label") return { key: "labelColor", value: val };
+  return null;
+}
+
+function parseImageLine(line: string): SlideMedia | null {
+  const match = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+  if (!match) return null;
+  return { src: match[2], alt: match[1] || undefined };
+}
+
+function mergeStyle(existing: SlideStyle | undefined, key: string, value: unknown): SlideStyle {
+  return { ...(existing || {}), [key]: value };
+}
 
 export function parseMarkdownToReport(md: string): Report {
   const lines = md.split("\n");
@@ -12,7 +46,7 @@ export function parseMarkdownToReport(md: string): Report {
   let contextBody: string[] = [];
   let problemHeading = "";
   let problemBody: string[] = [];
-  const observations: { number: number; title: string; body: string; note: string }[] = [];
+  const observations: { number: number; title: string; body: string; note: string; style?: SlideStyle }[] = [];
   let proposalHeading = "";
   let proposalBody: string[] = [];
   let proposalBullets: string[] = [];
@@ -22,6 +56,11 @@ export function parseMarkdownToReport(md: string): Report {
   let closerObservation = "";
   let closerBody: string[] = [];
   let closerUrl = "";
+  const flexSections: FlexSection[] = [];
+  let currentFlex: FlexSection | null = null;
+  let flexItemIndex = -1;
+
+  const sectionStyles: Partial<Record<string, SlideStyle>> = {};
 
   type Section =
     | "none"
@@ -31,17 +70,95 @@ export function parseMarkdownToReport(md: string): Report {
     | "proposal"
     | "risks"
     | "nextsteps"
-    | "closer";
+    | "closer"
+    | "flex";
 
   let currentSection: Section = "none";
   let obsIndex = -1;
   let riskIndex = -1;
   let stepIndex = -1;
   let inProposalBullets = false;
+  let inCodeBlock = false;
+  let codeBlockLang = "";
+  let codeBlockLines: string[] = [];
+
+  function pushCodeBlock(block: string) {
+    switch (currentSection) {
+      case "context":
+        contextBody.push(block);
+        break;
+      case "problem":
+        problemBody.push(block);
+        break;
+      case "proposal":
+        proposalBody.push(block);
+        break;
+      case "closer":
+        closerBody.push(block);
+        break;
+      case "observations":
+        if (obsIndex >= 0) {
+          observations[obsIndex].body = observations[obsIndex].body
+            ? observations[obsIndex].body + "\n" + block
+            : block;
+        }
+        break;
+      case "flex":
+        if (currentFlex) {
+          if (flexItemIndex >= 0) {
+            const item = currentFlex.items[flexItemIndex];
+            item.body = item.body ? item.body + "\n" + block : block;
+          } else {
+            currentFlex.body = currentFlex.body
+              ? currentFlex.body + "\n" + block
+              : block;
+          }
+        }
+        break;
+      case "risks":
+        if (riskIndex >= 0) {
+          risks[riskIndex].body += (risks[riskIndex].body ? "\n" : "") + block;
+        }
+        break;
+      case "nextsteps":
+        if (stepIndex >= 0) {
+          nextSteps[stepIndex].description +=
+            (nextSteps[stepIndex].description ? "\n" : "") + block;
+        }
+        break;
+    }
+  }
+
+  function finalizeFlex() {
+    if (currentFlex) {
+      flexSections.push(currentFlex);
+      currentFlex = null;
+      flexItemIndex = -1;
+    }
+  }
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmed = line.trim();
+
+    // Code fence handling — must be first to prevent code content from being parsed as sections
+    if (trimmed.startsWith("```")) {
+      if (!inCodeBlock) {
+        inCodeBlock = true;
+        codeBlockLang = trimmed.slice(3).trim();
+        codeBlockLines = [];
+      } else {
+        inCodeBlock = false;
+        const block = "```" + codeBlockLang + "\n" + codeBlockLines.join("\n") + "\n```";
+        pushCodeBlock(block);
+      }
+      continue;
+    }
+
+    if (inCodeBlock) {
+      codeBlockLines.push(line);
+      continue;
+    }
 
     if (trimmed === "---") continue;
 
@@ -80,41 +197,99 @@ export function parseMarkdownToReport(md: string): Report {
       continue;
     }
 
-    // Section headers
+    // Section headers — known types first
     if (/^## 🎯/.test(trimmed) || /^## .*[Cc]ontext/.test(trimmed)) {
+      finalizeFlex();
       currentSection = "context";
       continue;
     }
     if (/^## 🔍/.test(trimmed) || /^## .*[Pp]roblem/.test(trimmed)) {
+      finalizeFlex();
       currentSection = "problem";
       continue;
     }
     if (/^## 📋/.test(trimmed) || /^## .*[Oo]bservation/.test(trimmed)) {
+      finalizeFlex();
       currentSection = "observations";
       obsIndex = -1;
       continue;
     }
     if (/^## 💡/.test(trimmed) || /^## .*[Pp]roposal/.test(trimmed)) {
+      finalizeFlex();
       currentSection = "proposal";
       inProposalBullets = false;
       continue;
     }
     if (/^## ⚠️/.test(trimmed) || /^## .*[Rr]isk/.test(trimmed)) {
+      finalizeFlex();
       currentSection = "risks";
       riskIndex = -1;
       continue;
     }
     if (/^## ✅/.test(trimmed) || /^## .*[Nn]ext.?[Ss]tep/.test(trimmed)) {
+      finalizeFlex();
       currentSection = "nextsteps";
       stepIndex = -1;
       continue;
     }
     if (/^## 🔑/.test(trimmed) || /^## .*[Cc]los/.test(trimmed)) {
+      finalizeFlex();
       currentSection = "closer";
       continue;
     }
 
+    // Catch-all: any other ## heading becomes a flex section
+    const flexMatch = trimmed.match(/^## (.+)/);
+    if (flexMatch) {
+      finalizeFlex();
+      const rawHeading = flexMatch[1].trim();
+      const emojiMatch = rawHeading.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})\uFE0F?\s*(.*)/u);
+      currentFlex = {
+        emoji: emojiMatch ? emojiMatch[1] : "",
+        heading: emojiMatch ? emojiMatch[2].trim() : rawHeading,
+        body: "",
+        items: [],
+      };
+      flexItemIndex = -1;
+      currentSection = "flex";
+      continue;
+    }
+
     if (!trimmed) continue;
+
+    // Style comment directives: <!-- bg: ... -->, <!-- text: ... -->, <!-- label: ... -->
+    const styleDirective = parseStyleComment(trimmed);
+    if (styleDirective) {
+      if (currentSection === "flex" && currentFlex) {
+        if (flexItemIndex >= 0) {
+          currentFlex.items[flexItemIndex].style = mergeStyle(currentFlex.items[flexItemIndex].style, styleDirective.key, styleDirective.value);
+        } else {
+          currentFlex.style = mergeStyle(currentFlex.style, styleDirective.key, styleDirective.value);
+        }
+      } else if (currentSection === "observations" && obsIndex >= 0) {
+        observations[obsIndex].style = mergeStyle(observations[obsIndex].style, styleDirective.key, styleDirective.value);
+      } else {
+        sectionStyles[currentSection] = mergeStyle(sectionStyles[currentSection], styleDirective.key, styleDirective.value);
+      }
+      continue;
+    }
+
+    // Image syntax: ![alt](src)
+    const imageMedia = parseImageLine(trimmed);
+    if (imageMedia) {
+      if (currentSection === "flex" && currentFlex) {
+        if (flexItemIndex >= 0) {
+          currentFlex.items[flexItemIndex].style = mergeStyle(currentFlex.items[flexItemIndex].style, "media", imageMedia);
+        } else {
+          currentFlex.style = mergeStyle(currentFlex.style, "media", imageMedia);
+        }
+      } else if (currentSection === "observations" && obsIndex >= 0) {
+        observations[obsIndex].style = mergeStyle(observations[obsIndex].style, "media", imageMedia);
+      } else {
+        sectionStyles[currentSection] = mergeStyle(sectionStyles[currentSection], "media", imageMedia);
+      }
+      continue;
+    }
 
     switch (currentSection) {
       case "context":
@@ -206,6 +381,30 @@ export function parseMarkdownToReport(md: string): Report {
         }
         break;
 
+      case "flex":
+        if (currentFlex) {
+          if (/^\*\*\d+\./.test(trimmed)) {
+            flexItemIndex++;
+            const itemTitle = trimmed
+              .replace(/^\*\*\d+\.\s*/, "")
+              .replace(/\*\*$/, "")
+              .replace(/\*\*/g, "");
+            currentFlex.items.push({
+              number: flexItemIndex + 1,
+              title: itemTitle,
+              body: "",
+            });
+          } else if (flexItemIndex >= 0) {
+            const text = stripMarkdown(trimmed);
+            const item = currentFlex.items[flexItemIndex];
+            item.body = item.body ? item.body + "\n" + text : text;
+          } else {
+            const text = stripMarkdown(trimmed);
+            currentFlex.body = currentFlex.body ? currentFlex.body + "\n" + text : text;
+          }
+        }
+        break;
+
       case "closer":
         if (/^> /.test(trimmed)) {
           closerObservation = trimmed.replace(/^> /, "");
@@ -218,10 +417,20 @@ export function parseMarkdownToReport(md: string): Report {
     }
   }
 
+  finalizeFlex();
+
+  // Apply section-level observation style to all observations without their own style
+  if (sectionStyles.observations) {
+    for (const obs of observations) {
+      if (!obs.style) obs.style = sectionStyles.observations;
+    }
+  }
+
   return {
     title: title || "Untitled Presentation",
     subtitle: subtitle || "",
     date: date || "2026",
+    titleStyle: sectionStyles.none,
     author: {
       name: authorName || "Datacom",
       avatarUrl: authorUrl,
@@ -234,11 +443,13 @@ export function parseMarkdownToReport(md: string): Report {
     },
     context: {
       heading: contextHeading || "Context",
-      body: contextBody.join(" ").trim(),
+      body: contextBody.join("\n").trim(),
+      style: sectionStyles.context,
     },
     problem: {
       heading: problemHeading || "Problem",
-      body: problemBody.join(" ").trim(),
+      body: problemBody.join("\n").trim(),
+      style: sectionStyles.problem,
     },
     observations:
       observations.length > 0
@@ -246,19 +457,24 @@ export function parseMarkdownToReport(md: string): Report {
         : [{ number: 1, title: "No observations found", body: "", note: "" }],
     proposal: {
       heading: proposalHeading || "Proposal",
-      body: proposalBody.join(" ").trim(),
+      body: proposalBody.join("\n").trim(),
       bullets: proposalBullets,
       summary: proposalSummary,
+      style: sectionStyles.proposal,
     },
     risks: risks.length > 0 ? risks : [{ title: "No risks identified", body: "" }],
+    risksStyle: sectionStyles.risks,
     nextSteps:
       nextSteps.length > 0
         ? nextSteps
         : [{ step: 1, label: "Review document", description: "" }],
+    nextStepsStyle: sectionStyles.nextsteps,
+    flexSections: flexSections.length > 0 ? flexSections : undefined,
     closer: {
       observation: closerObservation || title,
-      body: closerBody.join(" ").trim(),
+      body: closerBody.join("\n").trim(),
       reportUrl: closerUrl || source || "#",
+      style: sectionStyles.closer,
     },
   };
 }
@@ -271,7 +487,7 @@ function stripMarkdown(s: string): string {
   return s
     .replace(/\*\*/g, "")
     .replace(/\*([^*]+)\*/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/^\d+\.\s+/, "")
     .trim();

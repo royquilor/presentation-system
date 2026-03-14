@@ -1,8 +1,8 @@
-# Approval Workflow
+# Agent Library Approval Workflow
 
-> An early operational runbook documenting the manual steps required to add a new agent card to the Agent Library and approve an agent sharing request during the MVP phase.
+> Manual runbook for adding agent cards and approving sharing requests during the Agent Store MVP phase.
 
-**Author:** [Johnson Paku](https://datacomgroup.atlassian.net/wiki/people/712020:1b15186f-f1c3-4b59-9e73-7c94b21e6ede)
+**Author:** Johnson Paku
 **Date:** 8 August 2025
 **Source:** https://datacomgroup.atlassian.net/wiki/spaces/IA/pages/40011694081
 
@@ -10,54 +10,120 @@
 
 ## 🎯 Context
 
-This document was authored by Johnson Paku for the Datacom Chat — Agent Store MVP project within the Insights & Analytics space. It captures the manual, script-driven process used by administrators during the early development phase to manage agent submissions before a fully automated approval system was in place.
+This document lives in the Insights & Analytics space under AI Projects → Active → Datacom Chat → Datacom Chat - Agent Store MVP. It captures the manual, step-by-step process used by administrators to add new agent cards to the library and approve agent sharing requests before an automated approval system existed.
 
 ---
 
 ## 🔍 Problem
 
-In the MVP phase, there was no automated pipeline to process new agent cards or approve sharing requests. Administrators needed a step-by-step guide to manually add agents to the library and run the duplication script that provisions approved agents for recipients in the Conver platform.
+In the MVP phase, there was no automated pipeline to process new agent cards or approve sharing requests. Administrators needed a clear runbook to manually add agents to the library data and run the duplication script that provisions approved agents for recipients in the Conver platform.
 
 ---
 
 ## 📋 Observations
 
-- **Adding a new agent card** requires SSH-ing into an Azure VM (`dev-agent-library-vm-aus-east`), navigating to a TypeScript data file (`src/polymet/data/agents.ts`), and manually inserting a JSON object.
-- **The JSON structure for a new card** includes fields for `id`, `name`, `type`, `category`, `author`, `description`, `problemSolved`, `sharing`, `specificIndividuals`, `compliance` flags, and `rating` — mirroring the later database schema.
-- **Agent card JSON was generated via ChatGPT** from email submission content, indicating a semi-automated but not integrated intake process.
-- **Approving an agent** requires cloning the `AgentDuplicator` GitHub repository and running `agent_duplication_app.py`, which takes the owner's and requester's email addresses as inputs.
-- **The entire workflow is manual and VM-dependent** — no API, no admin UI, and no automated notifications at this stage.
-- **Only two pieces of information are required to approve**: the original owner's email and the requester's email.
+**1. New cards require ChatGPT-assisted JSON generation**
+
+Email submissions are converted into a structured JSON format via ChatGPT. The output is then manually inserted into the source data file.
+
+---
+
+**2. Agent card JSON schema**
+
+The card structure includes identity, metadata, sharing, compliance, and rating fields. Example:
+
+```json
+{
+    "id": "Unassigned",
+    "name": "aa",
+    "type": "Agent",
+    "category": "Productivity",
+    "author": "Johnson Paku",
+    "description": "aaa",
+    "fullDescription": "Unprovided",
+    "problemSolved": "aaa",
+    "technicalRequirements": "Unprovided",
+    "authorContact": "johnson.paku3@datacom.com",
+    "sharing": "All Datacom",
+    "specificIndividuals": [],
+    "compliance": {
+      "noCredentials": true,
+      "noSensitiveData": true
+    },
+    "rating": {
+      "average": null,
+      "count": 0,
+      "userRatings": {}
+    },
+    "createdAt": "2025-08-04"
+}
+```
+
+---
+
+**3. Add-card workflow is VM-based**
+
+Steps: connect to the dev VM via SSH, navigate to `src/polymet/data/agents.ts`, add the ChatGPT output to the file, and save. No admin UI or API is involved.
+
+---
+
+**4. Approval uses AgentDuplicator script**
+
+Approval requires cloning the `AgentDuplicator` repository from GitHub and running `agent_duplication_app.py`. The script prompts for the owner's email address and the requester's email address.
+
+---
+
+**5. Notification is out-of-band**
+
+The final step is "Notify Submitter of Approval" but no automated mechanism is documented; it is assumed to be handled manually (e.g., via email).
 
 ---
 
 ## 💡 Proposal
 
-This document describes the manual MVP workaround: admins SSH into a dev VM to edit source data files for new cards and run a Python duplication script for approvals. The process relies on access to the Azure VM, the GitHub repository, and valid email addresses for both parties. The "Notify Submitter of Approval" step is listed but not detailed, suggesting it was handled out-of-band (e.g., via email).
+**1. Add new card to Agent Library**
+
+Ask ChatGPT to produce the JSON format from the email submission. Then:
+
+1. Connect to the [dev VM](https://portal.azure.com/#@datacomunity.com/resource/subscriptions/8105323d-9d3e-4942-a3e0-8ca3c383adae/resourceGroups/dev-agent-library/providers/Microsoft.Compute/virtualMachines/dev-agent-library-vm-aus-east/connect) via SSH.
+2. Go to `src/polymet/data/agents.ts`.
+3. Add the ChatGPT output to the file and save.
+
+---
+
+**2. Approve agent request**
+
+1. Clone [https://github.com/DatacomGroup/AgentDuplicator](https://github.com/DatacomGroup/AgentDuplicator).
+2. Run `agent_duplication_app.py` and follow the prompts.
+3. Requirements: owner's email address and requester's email address.
+4. Notify the submitter of approval.
 
 ---
 
 ## ⚠️ Risks
 
-- **Direct VM file editing is error-prone** — manually editing TypeScript source files on a VM bypasses code review, version control practices, and type safety checks.
-- **No audit trail** — this process generates no automated log of who approved what and when; compliance and accountability rely entirely on human record-keeping.
-- **Single point of failure** — the workflow depends on access to a specific Azure VM; if the VM is unavailable or access is revoked, approvals are blocked entirely.
-- **Scalability ceiling** — the manual process is unsuitable for any meaningful volume of submissions and was clearly intended only as a temporary MVP solution.
+**Direct VM file editing** Manually editing TypeScript source files on a VM bypasses code review, version control, and type safety checks.
+
+**No audit trail** The process does not generate an automated log of who approved what and when; compliance relies on manual record-keeping.
+
+**Single point of failure** The workflow depends on access to the Azure VM; if it is unavailable or access is revoked, approvals are blocked.
+
+**Scalability ceiling** The manual process is unsuitable for meaningful submission volume and was intended only as a temporary MVP solution.
 
 ---
 
 ## ✅ Next Steps
 
-- This runbook should be retired once the automated approval system (documented in the Technical Specification and Agent Access System docs) is deployed.
-- Verify the `AgentDuplicator` Python script still functions correctly and document its dependencies and configuration requirements.
-- Ensure all historical approvals performed via this process are retroactively captured in the audit log system introduced in later architecture iterations.
-- Confirm the dev VM (`dev-agent-library-vm-aus-east`) is decommissioned or repurposed once the production admin UI is live.
+1. **Retire runbook** — Decommission this runbook once the automated approval system is deployed.
+2. **Verify AgentDuplicator** — Confirm `agent_duplication_app.py` still works and document its dependencies and configuration.
+3. **Retrofit audit log** — Ensure historical approvals performed via this process are captured in the audit log system.
+4. **Decommission VM** — Confirm the dev VM (`dev-agent-library-vm-aus-east`) is decommissioned or repurposed once the production admin UI is live.
 
 ---
 
 ## 🔑 Close
 
-This is a minimal MVP runbook representing the earliest approval process; it has since been superseded by the automated admin UI and API-driven approval workflow described in the broader Agent Library architecture documentation.
+> This is a minimal MVP runbook representing the earliest approval process; it has since been superseded by the automated admin UI and API-driven approval workflow described in the broader Agent Library architecture documentation.
 
 ---
 

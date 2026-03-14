@@ -24,6 +24,7 @@ const CATEGORIES = [
   { id: "agent-library", label: "Agent Library" },
   { id: "servicenow", label: "ServiceNow" },
   { id: "product-hub", label: "Product Hub" },
+  { id: "external", label: "External" },
 ] as const;
 
 function categoryColour(cat: string) {
@@ -38,6 +39,8 @@ function categoryColour(cat: string) {
       return "bg-[#33913A]/10 text-[#33913A] dark:bg-[#33913A]/15 dark:text-[#6FCF76]";
     case "product-hub":
       return "bg-[#FF8C00]/10 text-[#FF8C00] dark:bg-[#FF8C00]/15 dark:text-[#FFB347]";
+    case "external":
+      return "bg-[#7C3AED]/10 text-[#7C3AED] dark:bg-[#A78BFA]/15 dark:text-[#A78BFA]";
     default:
       return "bg-foreground/5 text-foreground/50";
   }
@@ -68,6 +71,8 @@ function categoryLabel(cat: string) {
       return "ServiceNow";
     case "product-hub":
       return "Product Hub";
+    case "external":
+      return "External";
     default:
       return cat;
   }
@@ -98,11 +103,12 @@ export function PresentationGallery({
       .length,
     servicenow: entries.filter((e) => e.category === "servicenow").length,
     "product-hub": entries.filter((e) => e.category === "product-hub").length,
+    external: entries.filter((e) => e.category === "external").length,
   };
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 mb-10">
+      <div className="mb-10 flex flex-wrap items-center justify-center gap-2">
         {CATEGORIES.map((cat) => {
           const count = counts[cat.id as keyof typeof counts];
           if (count === 0 && cat.id !== "all") return null;
@@ -131,17 +137,17 @@ export function PresentationGallery({
         })}
       </div>
 
-      <p className="text-sm text-foreground/40 mb-6">
+      <p className="mx-auto mb-6 w-full max-w-4xl text-left text-sm text-foreground/40">
         {sorted.length} presentation{sorted.length !== 1 ? "s" : ""} — sorted
         newest first
       </p>
 
-      <div className="grid gap-3">
+      <div className="grid gap-3 justify-items-center">
         {sorted.map((entry) => (
           <Link
             key={entry.slug}
             href={`/p/${entry.slug}`}
-            className="group block border border-foreground/10 rounded-lg p-5 hover:border-foreground/25 hover:bg-foreground/[0.03] transition-all duration-200"
+            className="group block w-full max-w-4xl border border-foreground/10 rounded-lg p-5 hover:border-foreground/25 hover:bg-foreground/[0.03] transition-all duration-200"
           >
               <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">

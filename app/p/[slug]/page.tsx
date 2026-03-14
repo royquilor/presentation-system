@@ -13,6 +13,7 @@ const PRESENTATIONS_DIRS = [
   path.join(process.cwd(), "content", "product-hub-presentations"),
   path.join(process.cwd(), "content", "capability"),
   path.join(process.cwd(), "content", "products"),
+  path.join(process.cwd(), "content", "external-reports"),
 ];
 
 function getMarkdownFiles(): string[] {
