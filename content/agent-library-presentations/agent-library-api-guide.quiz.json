@@ -1,0 +1,160 @@
+{
+  "quizId": "api-guide-openapi-spec-quiz",
+  "title": "Quiz: OpenAPI Spec Syntax & Design-System Mapping",
+  "description": "Tests your knowledge of the Agent Library REST API structure, authentication model, data schemas, endpoint patterns, and error handling. Covers API Guide and Architecture source material.",
+  "sourceMaterial": "agent-library-api-guide.md",
+  "estimatedTime": "8-12 minutes",
+  "passingScore": 70,
+  "metadata": {
+    "author": "Ben",
+    "created": "2026-03-14",
+    "version": "1.0",
+    "tags": ["api", "openapi", "rest", "authentication", "data-models", "week-1"]
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "How many API modules does the Agent Library expose?",
+      "options": [
+        "8 modules (Agents, Public Agents, Prompts, Public Prompts, Users, Approvals, Email, Health)",
+        "5 modules (Agents, Prompts, Users, Approvals, Health)",
+        "6 modules (Agents, Public Agents, Prompts, Public Prompts, Users, Health)",
+        "10 modules (Agents, Public Agents, Prompts, Public Prompts, Users, Approvals, Email, Health, Search, Analytics)"
+      ],
+      "correct": 0,
+      "explanation": "The API exposes exactly 8 modules: Agents (/api/agents), Public Agents (/api/public-agents), Prompts (/api/prompts), Public Prompts (/api/public-prompts), Users (/api/users), Approvals (/api/approvals), Email (/api/email), and Health (/api/health). Each module follows consistent patterns for pagination, search, and filtering.",
+      "difficulty": "easy",
+      "objective": "recall-api-module-count",
+      "sourceReference": {
+        "slideLabel": "🏗️ API Endpoints Overview",
+        "excerpt": "Core endpoints: Agents, Public Agents, Prompts, Public Prompts, Users, Approvals, Email, Health"
+      }
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "What is the default rate limit for the Agent Library API?",
+      "options": [
+        "100 requests per minute per user with 10 requests/second burst",
+        "1000 requests per hour per subscription",
+        "50 requests per minute with no burst limit",
+        "500 requests per minute per IP address"
+      ],
+      "correct": 0,
+      "explanation": "The API enforces a default limit of 100 requests per minute per user with a burst limit of 10 requests per second. Rate limit information is included in response headers. This is per-user (authenticated via JWT), not per-IP or per-subscription.",
+      "difficulty": "easy",
+      "objective": "recall-rate-limits",
+      "sourceReference": {
+        "slideLabel": "📈 Performance Considerations",
+        "excerpt": "Default Limit: 100 requests per minute per user, Burst Limit: 10 requests per second"
+      }
+    },
+    {
+      "id": "q3",
+      "type": "true-false",
+      "question": "The Agent Library uses a single database (MongoDB) for both personal agent data and the public agent directory.",
+      "correct": false,
+      "explanation": "The system uses a dual database architecture: MongoDB for personal data (agents, prompts owned by individual users) and CosmosDB for the public directory (approved agents and prompts). This separation is a deliberate design decision (ADR-004) to optimise for different access patterns -- personal data needs flexible queries while the public directory needs low-latency reads.",
+      "difficulty": "medium",
+      "objective": "understand-dual-database",
+      "sourceReference": {
+        "slideLabel": "🏗️ Architecture",
+        "excerpt": "MongoDB for personal data, CosmosDB for public directory — ADR-004 dual database strategy"
+      }
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Which RBAC roles can access the /api/approvals/* endpoints?",
+      "options": [
+        "admin and moderator only",
+        "All roles (user, admin, moderator)",
+        "admin only",
+        "user and moderator"
+      ],
+      "correct": 0,
+      "explanation": "The approval workflow endpoints are restricted to admin (full system access, including approval management) and moderator (content moderation, approval workflow). Regular users with the 'user' role can only read public content and manage their own personal content -- they cannot approve or reject submissions.",
+      "difficulty": "medium",
+      "objective": "understand-rbac-boundaries",
+      "sourceReference": {
+        "slideLabel": "🔐 Authentication & Authorization",
+        "excerpt": "admin: Full system access. moderator: Content moderation, approval workflow"
+      }
+    },
+    {
+      "id": "q5",
+      "type": "ordering",
+      "question": "Arrange the JWT authentication flow in the correct order:",
+      "items": [
+        "Client requests access token from Azure AD",
+        "Azure AD returns JWT token to client",
+        "Client sends API request with Bearer token in Authorization header",
+        "API validates the JWT token (audience, issuer, expiry)",
+        "API processes the request and returns the response"
+      ],
+      "correctOrder": [0, 1, 2, 3, 4],
+      "explanation": "The JWT flow is sequential: the client first authenticates with Azure AD to obtain a token, then includes that token in every API request. The API validates the token before processing any request. If validation is skipped or the order is broken (e.g., calling the API before obtaining a token), the request fails with a 401 Unauthorized error.",
+      "difficulty": "medium",
+      "objective": "understand-auth-flow",
+      "sourceReference": {
+        "slideLabel": "🔐 Authentication & Authorization",
+        "excerpt": "Client requests access token from Azure AD, Azure AD returns JWT, API validates JWT"
+      }
+    },
+    {
+      "id": "q6",
+      "type": "scenario",
+      "question": "You're building a client integration and your API calls are returning 422 Validation Error with details showing the 'name' field is required. What should you check first?",
+      "situation": "A developer is integrating with the Agent Library API using the TypeScript client pattern from the documentation. POST requests to /api/agents are failing consistently.",
+      "options": [
+        "Check the request body JSON structure -- ensure 'name' is included and is a non-empty string",
+        "Refresh the JWT token -- it may have expired",
+        "Check the rate limit headers -- you may be throttled",
+        "Switch from POST to PUT -- the agent may already exist"
+      ],
+      "correct": 0,
+      "explanation": "A 422 Validation Error with field-level details (field: 'name', message: 'Name is required') is the API's standard validation response. The error explicitly identifies the missing field. A 401 would indicate token issues, 429 would indicate rate limiting, and a CONFLICT error (not 422) would indicate a duplicate. Always read the error details field -- it tells you exactly what's wrong.",
+      "difficulty": "medium",
+      "objective": "apply-error-handling",
+      "sourceReference": {
+        "slideLabel": "🔄 API Integration Patterns",
+        "excerpt": "VALIDATION_ERROR: Request validation failed — error details include field and message"
+      }
+    },
+    {
+      "id": "q7",
+      "type": "text-input",
+      "question": "Describe the consistent error response schema used by all Agent Library API endpoints. Include the top-level fields and the error object structure.",
+      "placeholder": "The error response has a 'success' field set to..., and an 'error' object containing...",
+      "sampleAnswer": "All error responses follow the schema: { success: false, error: { code, message, details } }. The 'code' field contains a machine-readable error code (e.g., VALIDATION_ERROR, AUTHENTICATION_ERROR, NOT_FOUND), 'message' contains a human-readable description, and 'details' contains field-specific information for validation errors.",
+      "keywords": ["success", "false", "error", "code", "message", "details", "VALIDATION_ERROR"],
+      "difficulty": "medium",
+      "objective": "recall-error-schema",
+      "sourceReference": {
+        "slideLabel": "🔄 API Integration Patterns",
+        "excerpt": "{ success: false, error: { code, message, details } }"
+      }
+    },
+    {
+      "id": "q8",
+      "type": "scenario",
+      "question": "What is the most likely root cause and what should you do?",
+      "situation": "Your production integration was working fine against the UAT environment at datacom-agent-library-fa-uat.azurewebsites.net. The team announces production launch. Your integration immediately starts failing with connection errors.",
+      "options": [
+        "The production URL is different from UAT -- update the base URL via environment configuration",
+        "The JWT token audience changed -- re-register the application in Azure AD",
+        "Rate limits are stricter in production -- implement exponential backoff",
+        "The API modules were reorganised -- update all endpoint paths"
+      ],
+      "correct": 0,
+      "explanation": "The API Guide explicitly lists 'Production URL TBD' as a known risk: 'integrations built against UAT endpoints will require a URL update at production launch, creating deployment risk if not managed via environment configuration.' This is why base URLs should always be stored in environment variables, never hardcoded. The JWT audience, endpoint paths, and rate limits remain consistent across environments.",
+      "difficulty": "hard",
+      "objective": "apply-deployment-risk",
+      "sourceReference": {
+        "slideLabel": "📡 API Base URLs",
+        "excerpt": "Azure Production: TBD — Template Ready. Integrations built against UAT endpoints will require URL update"
+      }
+    }
+  ]
+}

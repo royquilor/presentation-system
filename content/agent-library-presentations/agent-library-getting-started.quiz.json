@@ -1,0 +1,160 @@
+{
+  "quizId": "getting-started-dev-environment-quiz",
+  "title": "Quiz: Enterprise Dev Environment Setup",
+  "description": "Tests your knowledge of the Datacom Agent Library development environment — multi-app architecture, database connectivity, Azure AD configuration, VNet peering, and troubleshooting common setup issues.",
+  "sourceMaterial": "agent-library-getting-started.md",
+  "estimatedTime": "8-12 minutes",
+  "passingScore": 70,
+  "metadata": {
+    "author": "Ben",
+    "created": "2026-03-15",
+    "version": "1.0",
+    "tags": ["dev-environment", "azure", "vnet", "database", "authentication", "onboarding"]
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Which three applications must run simultaneously during local development, and on which ports?",
+      "options": [
+        "API on 7071, Client App on 5174, Admin App on 3000",
+        "API on 3000, Client App on 8080, Admin App on 5174",
+        "API on 7071, Client App on 3000, Admin App on 5174",
+        "API on 443, Client App on 5174, Admin App on 3001"
+      ],
+      "correct": 0,
+      "explanation": "The three concurrent applications are: API on port 7071 (Azure Functions runtime), Client App on port 5174 (Vite dev server), and Admin App on port 3000 (Vite dev server). The single command 'npm run dev:all' starts all three simultaneously.",
+      "difficulty": "easy",
+      "objective": "recall-multi-app-architecture",
+      "sourceReference": {
+        "slideLabel": "🏗️ Multi-App Architecture",
+        "excerpt": "API on 7071, Client App on 5174, Admin App on 3000 — npm run dev:all starts all three"
+      }
+    },
+    {
+      "id": "q2",
+      "type": "true-false",
+      "question": "MongoDB and CosmosDB serve the same purpose in the Agent Library and are interchangeable.",
+      "correct": false,
+      "explanation": "They serve distinct roles: MongoDB handles personal/private data via VNet peering (172.21.0.0/16 to 172.19.0.0/16), while CosmosDB handles public/shared data via private endpoint. This dual database strategy optimises for different access patterns — personal data needs flexible queries while the public directory needs low-latency reads.",
+      "difficulty": "easy",
+      "objective": "understand-dual-database",
+      "sourceReference": {
+        "slideLabel": "💾 Database Architecture",
+        "excerpt": "MongoDB for personal data via VNet peering, CosmosDB for public data via private endpoint"
+      }
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "What does the BYPASS_JWT_VALIDATION=true setting in local.settings.json do, and what is its critical constraint?",
+      "options": [
+        "Skips JWT token validation for local development — must never be enabled in production",
+        "Generates a mock JWT token automatically — can be used in any environment",
+        "Disables Azure AD entirely — requires manual re-enablement",
+        "Bypasses rate limiting — only safe in test environments"
+      ],
+      "correct": 0,
+      "explanation": "BYPASS_JWT_VALIDATION=true disables JWT token validation during local development so developers can test API endpoints without a valid Azure AD token. The critical constraint is that this must never be enabled in production, as it would allow unauthenticated access to all API endpoints. Authentication bugs will only surface when testing against UAT.",
+      "difficulty": "medium",
+      "objective": "understand-jwt-bypass-risk",
+      "sourceReference": {
+        "slideLabel": "🔐 Authentication Setup",
+        "excerpt": "BYPASS_JWT_VALIDATION=true skips validation locally — must never be enabled in production"
+      }
+    },
+    {
+      "id": "q4",
+      "type": "ordering",
+      "question": "Arrange the environment setup steps in the correct order:",
+      "items": [
+        "Clone the repository and verify directory structure",
+        "Install dependencies with npm run install:all",
+        "Copy example env files (env.dev.example, local.settings.example.json)",
+        "Populate Azure AD tenant/client IDs and database credentials",
+        "Run the health check script to validate the full stack"
+      ],
+      "correctOrder": [0, 1, 2, 3, 4],
+      "explanation": "The setup follows a logical dependency chain: you must have the code (clone) before installing packages, templates before populating credentials, and credentials configured before the health check can succeed. Running health checks before configuration will report failures for every service.",
+      "difficulty": "medium",
+      "objective": "understand-setup-sequence",
+      "sourceReference": {
+        "slideLabel": "🚀 Setup Steps",
+        "excerpt": "Clone → install → copy env templates → populate credentials → health check"
+      }
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Which VNet CIDR ranges are peered for MongoDB connectivity?",
+      "options": [
+        "Function App 172.21.0.0/16 peered with MongoDB 172.19.0.0/16",
+        "Function App 10.0.0.0/16 peered with MongoDB 10.1.0.0/16",
+        "Function App 192.168.0.0/16 peered with MongoDB 192.168.1.0/16",
+        "Function App 172.16.0.0/16 peered with MongoDB 172.17.0.0/16"
+      ],
+      "correct": 0,
+      "explanation": "The VNet peering connects the Function App VNet (datacom-agent-library-uat-vnet-eastus2 at 172.21.0.0/16) with the MongoDB VNet (datacomchat-uat-mongodb-vm-linux-vnet at 172.19.0.0/16). This enables private IP connectivity between the Azure Functions API and the MongoDB VM without traversing the public internet.",
+      "difficulty": "medium",
+      "objective": "recall-network-architecture",
+      "sourceReference": {
+        "slideLabel": "🌐 Network Architecture",
+        "excerpt": "Function App 172.21.0.0/16 peered with MongoDB 172.19.0.0/16"
+      }
+    },
+    {
+      "id": "q6",
+      "type": "scenario",
+      "question": "What is the most likely cause and what should you check first?",
+      "situation": "You've completed all setup steps and run the health check. The result shows MongoDB as 'Connected' but CosmosDB as 'Disconnected'. You're working from home without VPN access.",
+      "options": [
+        "CosmosDB uses a private endpoint with public access disabled — you need VPN or Bastion access to reach it",
+        "The CosmosDB connection string is wrong — update COSMOS_DB_KEY in local.settings.json",
+        "CosmosDB is experiencing an Azure region outage — wait and retry",
+        "MongoDB and CosmosDB share the same VNet — if one works, both should work"
+      ],
+      "correct": 0,
+      "explanation": "CosmosDB is configured with public network access disabled and is only accessible via private endpoint. Unlike MongoDB (which uses VNet peering that may be accessible through certain network paths), the private endpoint requires the developer to be within the Azure network. Working from home without VPN means no route to the private endpoint. The guide recommends either Azure VPN/Bastion access or using the Windows-only CosmosDB emulator locally.",
+      "difficulty": "hard",
+      "objective": "apply-network-troubleshooting",
+      "sourceReference": {
+        "slideLabel": "🌐 Network Architecture",
+        "excerpt": "CosmosDB private endpoint with public access disabled — requires VPN or Bastion"
+      }
+    },
+    {
+      "id": "q7",
+      "type": "text-input",
+      "question": "What are the four Azure permissions required for full development setup, and which resource groups do they apply to?",
+      "placeholder": "The four permissions are... applied to resource groups...",
+      "sampleAnswer": "The four required permissions are Contributor, Network Contributor, Private DNS Zone Contributor, and Key Vault Contributor. These apply to the UAT resource group (rg-datacom-agent-library-uat) and the MongoDB resource group (datacomchat-uat-rg-eastaus2). Not all developers may have these elevated permissions, which can block setup verification steps.",
+      "keywords": ["Contributor", "Network Contributor", "Private DNS Zone Contributor", "Key Vault Contributor"],
+      "difficulty": "medium",
+      "objective": "recall-azure-permissions",
+      "sourceReference": {
+        "slideLabel": "🔑 Azure Permissions",
+        "excerpt": "Contributor, Network Contributor, Private DNS Zone Contributor, Key Vault Contributor"
+      }
+    },
+    {
+      "id": "q8",
+      "type": "scenario",
+      "question": "What is the most efficient resolution?",
+      "situation": "A new contractor has joined the team and needs to start development immediately. They do not have Azure VPN access and their corporate laptop runs Linux (no CosmosDB emulator). They need to be productive today.",
+      "options": [
+        "Use the tiered approach: run Docker MongoDB locally with JWT bypass for rapid iteration, deferring UAT integration testing",
+        "Escalate to get VPN access — no development is possible without UAT database connectivity",
+        "Connect directly to UAT MongoDB using the public IP address",
+        "Install Windows in a VM to use the CosmosDB emulator"
+      ],
+      "correct": 0,
+      "explanation": "The guide establishes a tiered development approach: developers can work entirely locally with Docker-based databases and JWT bypass for rapid iteration. This allows the contractor to start writing and testing feature code immediately. Full UAT integration testing can be deferred until VPN access is granted. MongoDB has no public IP (VNet only), and running a Windows VM just for the emulator is unnecessarily complex for day-one productivity.",
+      "difficulty": "hard",
+      "objective": "apply-tiered-dev-approach",
+      "sourceReference": {
+        "slideLabel": "🚀 Tiered Development",
+        "excerpt": "Docker MongoDB locally with JWT bypass for rapid iteration — defer UAT integration"
+      }
+    }
+  ]
+}

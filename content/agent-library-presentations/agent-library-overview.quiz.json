@@ -1,0 +1,142 @@
+{
+  "quizId": "integration-checkpoint-quiz",
+  "title": "Quiz: Integration Checkpoint -- Spec, Metric, Prompt",
+  "description": "Cross-cutting assessment connecting API specification knowledge, observability metrics, and prompt architecture. Tests your ability to trace requests end-to-end, diagnose failures across layers, and reason about architecture decisions.",
+  "sourceMaterial": "agent-library-overview.md",
+  "estimatedTime": "10-15 minutes",
+  "passingScore": 70,
+  "metadata": {
+    "author": "Ben",
+    "created": "2026-03-14",
+    "version": "1.0",
+    "tags": ["integration", "architecture", "end-to-end", "cross-domain", "week-4"]
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "What WAF (Well-Architected Framework) score has the Agent Library achieved, and which pillar scored lowest?",
+      "options": [
+        "8.5/10 overall (A- Grade), with Performance Efficiency as the lowest pillar at 7/10",
+        "9/10 overall (A Grade), with Cost Optimization as the lowest pillar at 7/10",
+        "8.5/10 overall (A- Grade), with Security as the lowest pillar at 7/10",
+        "8/10 overall (B+ Grade), with Reliability as the lowest pillar at 6/10"
+      ],
+      "correct": 0,
+      "explanation": "The system achieves 8.5/10 WAF compliance (A- Grade). The Security pillar scores highest at 9/10, while Performance Efficiency scores lowest at 7/10. The performance pillar is lower partly due to serverless cold start latency and the fact that the system hasn't been load tested beyond 500 concurrent users (target is 1000+).",
+      "difficulty": "easy",
+      "objective": "recall-waf-scores",
+      "sourceReference": {
+        "slideLabel": "📊 WAF Compliance",
+        "excerpt": "8.5/10 overall (A- Grade), Performance Efficiency lowest at 7/10"
+      }
+    },
+    {
+      "id": "q2",
+      "type": "ordering",
+      "question": "Arrange the complete request flow from user action to database and back:",
+      "items": [
+        "User clicks action in React frontend (port 5174)",
+        "MSAL.js acquires JWT token from Azure AD",
+        "Frontend sends API request with Bearer token to Azure Functions (port 7071)",
+        "API middleware validates JWT (audience, issuer, expiry, roles)",
+        "Business logic queries MongoDB or CosmosDB via repository pattern",
+        "API returns JSON response with consistent schema through VNet"
+      ],
+      "correctOrder": [0, 1, 2, 3, 4, 5],
+      "explanation": "The end-to-end flow spans three tiers: Client App (5174), Admin App (3000), and API (7071). Authentication happens before the API call via MSAL.js. The API then validates the JWT, checks role permissions, executes business logic through the repository pattern, and returns a consistent JSON response. VNet peering (172.21.0.0/16 to 172.19.0.0/16) ensures private database connectivity. Understanding this full chain is essential for diagnosing where failures occur.",
+      "difficulty": "medium",
+      "objective": "understand-request-flow",
+      "sourceReference": {
+        "slideLabel": "🏗️ Architecture Overview",
+        "excerpt": "React frontend → MSAL.js JWT → Azure Functions → middleware → MongoDB/CosmosDB → JSON response"
+      }
+    },
+    {
+      "id": "q3",
+      "type": "true-false",
+      "question": "The BYPASS_JWT_VALIDATION environment variable can safely be used in UAT to simplify testing.",
+      "correct": false,
+      "explanation": "BYPASS_JWT_VALIDATION must NEVER be used in UAT or production -- only in local development. The troubleshooting guide explicitly warns that using it outside local dev exposes all endpoints without authentication, creating a critical security vulnerability. Furthermore, it hides auth-related bugs that would only surface in UAT, making it counterproductive for testing. The auth documentation notes the Security pillar scores 9/10 specifically because of strict JWT validation in all non-local environments.",
+      "difficulty": "medium",
+      "objective": "understand-security-boundaries",
+      "sourceReference": {
+        "slideLabel": "🔐 Security",
+        "excerpt": "BYPASS_JWT_VALIDATION must NEVER be used in UAT or production — local development only"
+      }
+    },
+    {
+      "id": "q4",
+      "type": "scenario",
+      "question": "Where in the stack is the failure occurring, and what is the correct diagnostic approach?",
+      "situation": "After a deployment, the /api/health endpoint returns healthy for all services. However, the approval workflow is broken: moderators can see the pending list but clicking 'Approve' returns a 403 Forbidden error. Admin users can approve without issues. No code changes were made to the approval endpoints.",
+      "options": [
+        "The RBAC role assignment for moderators was changed during deployment -- check Azure AD role assignments and the requireRole middleware configuration for the approve endpoint",
+        "The JWT token cache is stale -- have moderators clear their browser cache and re-authenticate",
+        "CosmosDB is returning 429 throttling errors disguised as 403 -- check RU consumption and scale up",
+        "The feature flag for approvals was accidentally disabled during deployment -- check the flag status in the admin panel"
+      ],
+      "correct": 0,
+      "explanation": "The key diagnostic clue is that admins CAN approve but moderators CANNOT, and the error is specifically 403 (Forbidden, not Unauthorized). This points to a role-based permission issue, not an auth or infrastructure problem. The requireRole middleware checks the JWT roles claim against the required roles for each endpoint. If the approve endpoint's role requirement was changed (e.g., from ['admin', 'moderator'] to ['admin'] only), moderators would get exactly this error. The health check passing confirms infrastructure is fine.",
+      "difficulty": "hard",
+      "objective": "apply-cross-layer-diagnosis",
+      "sourceReference": {
+        "slideLabel": "🔐 Authentication & Authorization",
+        "excerpt": "403 Forbidden for moderators — check RBAC role assignments and requireRole middleware"
+      }
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Which Architecture Decision Record (ADR) chose the dual database approach, and what was the primary justification?",
+      "options": [
+        "ADR-004 -- different access patterns for personal data (MongoDB) vs public directory (CosmosDB) at approximately $50/month total",
+        "ADR-002 -- cost optimization by splitting read and write workloads across cheaper database tiers",
+        "ADR-005 -- compliance requirement to separate user PII from public content in different data stores",
+        "ADR-003 -- performance optimization by using CosmosDB's global distribution for the public directory"
+      ],
+      "correct": 0,
+      "explanation": "ADR-004 established the dual database architecture. MongoDB handles personal data (agents, prompts owned by users) with flexible queries, while CosmosDB handles the public directory with low-latency reads. The total cost is approximately $50/month -- a 70% reduction vs VM deployment. The other ADRs cover: ADR-001 (non-monorepo), ADR-002 (React/Vite), ADR-003 (Azure Functions), ADR-005 (Azure API Management).",
+      "difficulty": "medium",
+      "objective": "understand-architecture-decisions",
+      "sourceReference": {
+        "slideLabel": "📋 Architecture Decisions",
+        "excerpt": "ADR-004: dual database — MongoDB for personal data, CosmosDB for public directory at ~$50/month"
+      }
+    },
+    {
+      "id": "q6",
+      "type": "text-input",
+      "question": "Describe how a new feature (like a prompt template) would flow through all three domains: API spec (how it's exposed), observability (how it's monitored), and prompt architecture (how it's structured). Cover at least one concern from each domain.",
+      "placeholder": "API: The new template would need endpoints for... Observability: We would track... Prompt: The template structure includes...",
+      "sampleAnswer": "API: A new prompt template would need a POST endpoint to create it (e.g., POST /api/prompts with the template content, category, and metadata), a GET endpoint to retrieve it, and integration with the approval workflow (POST /api/public-prompts/{id}/submit). The endpoints would follow the existing module pattern with JWT auth, pagination, and consistent error responses. Observability: We would track the template's usage through Application Insights custom events (currently planned but not implemented), monitor response times for template-related API calls against the p95 < 200ms target, and set up alerts for error rate spikes. The 10% sampling rate means we need to account for the 10x multiplier in dashboard counts. Prompt: The template would follow the ACDE pattern with prompt variables ({template_id}, {session_id}, {user_name}, {company_context}), define the voice state transitions, and specify the output format (SIPOC table, Mermaid diagram, or similar structured output). Feature flags would control the rollout from 5% to 100% over approximately 35 days.",
+      "keywords": ["endpoint", "JWT", "approval", "application insights", "custom events", "response time", "template", "variables", "feature flag", "rollout"],
+      "difficulty": "hard",
+      "objective": "synthesize-cross-domain",
+      "sourceReference": {
+        "slideLabel": "🏗️ Architecture Overview",
+        "excerpt": "API spec, observability metrics, and prompt architecture form three interconnected domains"
+      }
+    },
+    {
+      "id": "q7",
+      "type": "scenario",
+      "question": "What is the correct sequence of actions to diagnose and resolve this?",
+      "situation": "Monday morning health check shows /api/health returns healthy, but the ACDE voice interview feature is not working. Users report the interface stays stuck in 'connecting' state. Application Insights shows no errors from the backend API. The feature was working Friday.",
+      "options": [
+        "Check the ElevenLabs external dependency -- the voice state is stuck at 'connecting' which means the WebSocket to ElevenLabs failed. Check /api/health/external and the ElevenLabs status page.",
+        "Restart the Azure Functions app -- serverless cold starts after the weekend are causing the connection timeout",
+        "Check the feature flag -- someone may have disabled the ACDE feature flag over the weekend via the admin panel",
+        "Increase CosmosDB RUs -- the prompt template retrieval is being throttled, preventing the session from starting"
+      ],
+      "correct": 0,
+      "explanation": "The diagnostic clues point to an external dependency failure: (1) /api/health returns healthy (backend is fine), (2) no backend errors in App Insights (the API layer isn't failing), (3) the interface is stuck at 'connecting' (the second voice state, meaning it's trying to reach ElevenLabs but can't). The ACDE architecture depends on ElevenLabs for voice AI (eleven_turbo_v2 model). Weekend outages or API key expirations at external providers are a known risk. The /api/health/external endpoint specifically checks third-party dependencies.",
+      "difficulty": "hard",
+      "objective": "apply-integrated-diagnosis",
+      "sourceReference": {
+        "slideLabel": "🔍 Troubleshooting",
+        "excerpt": "Voice stuck at connecting — check ElevenLabs external dependency via /api/health/external"
+      }
+    }
+  ]
+}

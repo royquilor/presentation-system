@@ -126,3 +126,23 @@
     @apply bg-background text-foreground;
   }
 }
+
+.scrollbar-thin::-webkit-scrollbar { width: 4px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.2); border-radius: 2px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(128, 128, 128, 0.4); }
+.scrollbar-thin { scrollbar-width: thin; scrollbar-color: rgba(128, 128, 128, 0.2) transparent; }
+
+.study-highlight {
+  background: rgba(250, 204, 21, 0.2);
+  padding: 1px 3px;
+}
+.study-focus-active .study-highlight {
+  background: rgba(250, 204, 21, 0.4);
+}
+.dark .study-highlight {
+  background: rgba(250, 204, 21, 0.15);
+}
+.dark .study-focus-active .study-highlight {
+  background: rgba(250, 204, 21, 0.3);
+}

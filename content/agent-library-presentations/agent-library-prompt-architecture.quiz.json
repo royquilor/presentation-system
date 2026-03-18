@@ -1,0 +1,141 @@
+{
+  "quizId": "prompt-architecture-failure-modes-quiz",
+  "title": "Quiz: Prompt Template Structure & Failure Modes",
+  "description": "Tests your knowledge of the ACDE prompt system, voice interface states, template variables, feature flag lifecycle, and common failure patterns across the Agent Library platform.",
+  "sourceMaterial": "agent-library-prompt-architecture.md",
+  "estimatedTime": "8-12 minutes",
+  "passingScore": 70,
+  "metadata": {
+    "author": "Ben",
+    "created": "2026-03-14",
+    "version": "1.0",
+    "tags": ["prompts", "acde", "voice-ai", "feature-flags", "failure-modes", "week-3"]
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "What are the three built-in prompt templates in the ACDE system?",
+      "options": [
+        "workflow-discovery, ai-adoption, process-improvement",
+        "workflow-analysis, cost-reduction, compliance-check",
+        "discovery-interview, adoption-assessment, optimization-plan",
+        "process-mapping, ai-readiness, lean-transformation"
+      ],
+      "correct": 0,
+      "explanation": "The ACDE (Adaptive Conversational Discovery Engine) provides exactly three templates: workflow-discovery (step-by-step process mapping producing SIPOC tables and Mermaid flowcharts), ai-adoption (assessing pain points, data readiness, automation potential, implementation effort, and business value), and process-improvement (Lean/TIMWOODS-based bottleneck and waste identification). Custom client-specific templates are not currently supported.",
+      "difficulty": "easy",
+      "objective": "recall-template-names",
+      "sourceReference": {
+        "slideLabel": "🤖 ACDE Prompt System",
+        "excerpt": "Three templates: workflow-discovery, ai-adoption, process-improvement"
+      }
+    },
+    {
+      "id": "q2",
+      "type": "ordering",
+      "question": "Arrange the five voice interface states in their typical lifecycle order during a conversation:",
+      "items": [
+        "idle -- waiting for user interaction",
+        "connecting -- establishing connection to ElevenLabs",
+        "listening -- capturing user speech input",
+        "processing -- AI generating response",
+        "speaking -- voice output being delivered"
+      ],
+      "correctOrder": [0, 1, 2, 3, 4],
+      "explanation": "The voice state machine follows a clear lifecycle: the system starts idle, then connects to ElevenLabs when the user initiates. Once connected, it listens for user input, processes that input through the AI model, then speaks the response. After speaking, it typically returns to listening for the next turn. Breaking this sequence (e.g., trying to process before connecting) causes errors.",
+      "difficulty": "easy",
+      "objective": "recall-voice-states",
+      "sourceReference": {
+        "slideLabel": "🎙️ Voice Interface States",
+        "excerpt": "idle, connecting, listening, processing, speaking — five-state lifecycle"
+      }
+    },
+    {
+      "id": "q3",
+      "type": "true-false",
+      "question": "Feature flags in the Agent Library use a 'fail open' design, meaning unknown or errored flags default to true (enabled).",
+      "correct": false,
+      "explanation": "Feature flags use a 'fail CLOSED' design -- unknown or errored flags default to false (disabled). This is a critical safety principle: if the feature flag system itself fails (e.g., CosmosDB is down), new features are automatically disabled rather than accidentally exposed to all users. The flag precedence is DB > Environment Variables > Defaults, and if all sources fail, the flag evaluates to false.",
+      "difficulty": "medium",
+      "objective": "understand-fail-closed",
+      "sourceReference": {
+        "slideLabel": "🚩 Feature Flags",
+        "excerpt": "Fail CLOSED design — unknown or errored flags default to false (disabled)"
+      }
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "What four prompt variables are injected into ACDE templates before each session?",
+      "options": [
+        "{template_id}, {session_id}, {user_name}, {company_context}",
+        "{model_id}, {conversation_id}, {user_email}, {org_name}",
+        "{prompt_type}, {thread_id}, {display_name}, {tenant_id}",
+        "{template_name}, {session_token}, {user_id}, {business_unit}"
+      ],
+      "correct": 0,
+      "explanation": "The four prompt variables are: {template_id} (which template to use), {session_id} (unique session identifier), {user_name} (the person being interviewed), and {company_context} (organizational context for relevance). Missing or unset variables can break the prompt behaviour -- for example, an empty {company_context} means the AI cannot tailor its questions to the user's industry.",
+      "difficulty": "medium",
+      "objective": "recall-prompt-variables",
+      "sourceReference": {
+        "slideLabel": "🤖 ACDE Prompt System",
+        "excerpt": "Four variables: {template_id}, {session_id}, {user_name}, {company_context}"
+      }
+    },
+    {
+      "id": "q5",
+      "type": "ordering",
+      "question": "Arrange the feature flag rollout stages in the correct order with their typical percentages:",
+      "items": [
+        "Development phase (Days 1-7) -- flag created and tested internally",
+        "5% rollout -- initial canary deployment to a small user subset",
+        "25% rollout -- expanded to a quarter of users with monitoring",
+        "50% rollout -- half the user base with performance validation",
+        "100% rollout -- full deployment, flag cleanup begins"
+      ],
+      "correctOrder": [0, 1, 2, 3, 4],
+      "explanation": "The rollout follows a progressive expansion: development (days 1-7), then gradual percentages: 5% canary, 25% expansion, 50% validation, then 100% general availability. The full lifecycle spans roughly 35 days including cleanup. Percentage assignment uses MD5 hashing of the user ID for deterministic, consistent user assignment -- the same user always sees the same state for a given flag.",
+      "difficulty": "medium",
+      "objective": "understand-rollout-stages",
+      "sourceReference": {
+        "slideLabel": "🚩 Feature Flags",
+        "excerpt": "Progressive rollout: 5% canary, 25% expansion, 50% validation, 100% GA over ~35 days"
+      }
+    },
+    {
+      "id": "q6",
+      "type": "scenario",
+      "question": "What is the most likely cause and how should it be handled?",
+      "situation": "A feature flag for a new prompt template was emergency-disabled 3 minutes ago via the admin panel. However, some users are still seeing the feature enabled. The team confirms the database flag value is correctly set to false.",
+      "options": [
+        "The 5-minute cache TTL means clients still have the old flag value -- wait 2 more minutes for cache expiry",
+        "The fail-closed design means the flag change was rejected -- try disabling it via environment variables instead",
+        "Users have the feature cached in localStorage -- they need to clear their browser cache",
+        "The MD5 percentage rollout algorithm overrides manual disables for users in the active cohort"
+      ],
+      "correct": 0,
+      "explanation": "Feature flag values are cached with a 5-minute TTL. After an emergency disable, it can take up to 5 minutes for all clients to pick up the change. The documentation notes this as a known limitation of the caching strategy: 'Up to 5 minutes for emergency changes.' For true emergencies, the additional step of invalidating caches should be performed. The DB value takes precedence (DB > Env > Defaults), but only after the cache expires.",
+      "difficulty": "hard",
+      "objective": "apply-flag-caching",
+      "sourceReference": {
+        "slideLabel": "🚩 Feature Flags",
+        "excerpt": "5-minute cache TTL — up to 5 minutes for emergency changes to propagate"
+      }
+    },
+    {
+      "id": "q7",
+      "type": "text-input",
+      "question": "Explain what SIPOC and TIMWOODS stand for and how each is used in the ACDE prompt system.",
+      "placeholder": "SIPOC stands for... and is used in the workflow-discovery template to... TIMWOODS stands for... and is used in...",
+      "sampleAnswer": "SIPOC stands for Suppliers, Inputs, Process, Outputs, Customers. It is used in the workflow-discovery template to produce structured process maps -- the AI interview extracts these five elements from the user's description of their workflow and generates a SIPOC table alongside a Mermaid flowchart. TIMWOODS stands for Transportation, Inventory, Motion, Waiting, Overproduction, Overprocessing, Defects, Skills -- the eight Lean wastes. It is used in the process-improvement template to systematically identify bottlenecks and waste in the user's described processes.",
+      "keywords": ["suppliers", "inputs", "process", "outputs", "customers", "transportation", "inventory", "motion", "waiting", "lean", "waste"],
+      "difficulty": "hard",
+      "objective": "recall-methodologies",
+      "sourceReference": {
+        "slideLabel": "🤖 ACDE Prompt System",
+        "excerpt": "SIPOC: Suppliers, Inputs, Process, Outputs, Customers. TIMWOODS: eight Lean wastes"
+      }
+    }
+  ]
+}

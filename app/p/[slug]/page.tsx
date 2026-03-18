@@ -16,6 +16,14 @@ const PRESENTATIONS_DIRS = [
   path.join(process.cwd(), "content", "external-reports"),
 ];
 
+function findQuizFile(slug: string): boolean {
+  for (const dir of PRESENTATIONS_DIRS) {
+    const fp = path.join(dir, `${slug}.quiz.json`);
+    if (fs.existsSync(fp)) return true;
+  }
+  return false;
+}
+
 function getMarkdownFiles(): string[] {
   const files: string[] = [];
   for (const dir of PRESENTATIONS_DIRS) {
@@ -81,5 +89,6 @@ export default async function PresentationPage({ params }: { params: Promise<{ s
     }
   }
 
-  return <DynamicPresentation report={report} />;
+  const hasQuiz = findQuizFile(slug);
+  return <DynamicPresentation report={report} slug={slug} hasQuiz={hasQuiz} />;
 }

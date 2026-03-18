@@ -1,0 +1,140 @@
+{
+  "quizId": "observability-metrics-quiz",
+  "title": "Quiz: Observability Basics & LLM Metric Definitions",
+  "description": "Tests your knowledge of Application Insights telemetry, KQL queries, health monitoring, alerting thresholds, incident response, and diagnostic procedures across the Agent Library system.",
+  "sourceMaterial": "agent-library-application-insights.md",
+  "estimatedTime": "8-12 minutes",
+  "passingScore": 70,
+  "metadata": {
+    "author": "Ben",
+    "created": "2026-03-14",
+    "version": "1.0",
+    "tags": ["observability", "monitoring", "application-insights", "kql", "incident-response", "week-2"]
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "What sampling rate is configured for custom events and page views in Application Insights?",
+      "options": [
+        "10% for events, 100% for exceptions",
+        "100% for all telemetry types",
+        "50% for events, 100% for exceptions",
+        "10% for all telemetry types including exceptions"
+      ],
+      "correct": 0,
+      "explanation": "The system uses 10% sampling for events (page views, custom events, traces) and 100% sampling for exceptions. This achieves approximately 90% cost reduction while ensuring no exception data is lost. When reading dashboards, remember that event counts are roughly 10x lower than actual traffic.",
+      "difficulty": "easy",
+      "objective": "recall-sampling-config",
+      "sourceReference": {
+        "slideLabel": "📊 Telemetry Configuration",
+        "excerpt": "10% sampling for events, 100% for exceptions — approximately 90% cost reduction"
+      }
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "What is the correct hierarchy of health check endpoints in the Agent Library?",
+      "options": [
+        "/api/health (system), /api/agents/health (module), /api/health/database (dependency), /api/health/external (third-party)",
+        "/api/health (system), /api/status (module), /api/ping (dependency)",
+        "/api/healthcheck (system), /api/agents/status (module)",
+        "/api/health (system only -- no granular endpoints exist)"
+      ],
+      "correct": 0,
+      "explanation": "The health check system has four levels: /api/health returns overall system status, /api/agents/health returns module-specific health, /api/health/database checks MongoDB and CosmosDB connectivity, and /api/health/external checks third-party dependencies. This layered approach lets operators quickly isolate which component is failing.",
+      "difficulty": "easy",
+      "objective": "recall-health-endpoints",
+      "sourceReference": {
+        "slideLabel": "🏥 Health Check Architecture",
+        "excerpt": "/api/health (system), /api/agents/health (module), /api/health/database (dependency), /api/health/external (third-party)"
+      }
+    },
+    {
+      "id": "q3",
+      "type": "true-false",
+      "question": "The Agent Library currently has fully configured Application Insights dashboards and automated alerts for all monitored metrics.",
+      "correct": false,
+      "explanation": "While Application Insights data is being collected (both frontend and backend telemetry), the documentation explicitly states that dashboards and alerts have NOT been configured yet. The data is collected but not surfaced or alerted on. Additionally, 30+ planned custom business events (like approval tracking) have not been implemented, and the backend telemetry helper (telemetry.js) exists but is not wired into endpoints.",
+      "difficulty": "medium",
+      "objective": "understand-observability-gaps",
+      "sourceReference": {
+        "slideLabel": "📋 Observability Gaps",
+        "excerpt": "Dashboards and alerts have NOT been configured. 30+ planned custom events not implemented."
+      }
+    },
+    {
+      "id": "q4",
+      "type": "ordering",
+      "question": "Arrange the incident severity levels from most critical to least critical, including their response time targets:",
+      "items": [
+        "P0 -- Complete service outage (15 minute response)",
+        "P1 -- Major feature unavailable (1 hour response)",
+        "P2 -- Degraded performance or minor feature issue (4 hour response)",
+        "P3 -- Cosmetic issue or minor inconvenience (24 hour response)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Incident severity follows the P0-P3 scale: P0 (15 min) is a complete outage requiring immediate response, P1 (1 hr) is a major feature failure, P2 (4 hr) is degraded performance, and P3 (24 hr) is a cosmetic/minor issue. The escalation path is: Primary On-Call, then Secondary On-Call, then Manager, then EAS Team Lead. If unresolved after 30 minutes, escalate to the next tier regardless of severity.",
+      "difficulty": "medium",
+      "objective": "understand-incident-response",
+      "sourceReference": {
+        "slideLabel": "🚨 Incident Response",
+        "excerpt": "P0: 15 min, P1: 1 hr, P2: 4 hr, P3: 24 hr. Escalate after 30 minutes if unresolved."
+      }
+    },
+    {
+      "id": "q5",
+      "type": "scenario",
+      "question": "What is the most likely cause of this discrepancy?",
+      "situation": "You're reviewing Application Insights dashboards and notice that the custom event count for page views shows approximately 500 events in the last hour. A colleague insists that traffic logs from the load balancer show roughly 5,000 requests in the same period. Both systems are functioning correctly.",
+      "options": [
+        "The 10% sampling rate means dashboard counts are approximately 10x lower than actual traffic",
+        "Application Insights has a 30-minute processing delay, so events haven't all appeared yet",
+        "The load balancer counts include health check pings which Application Insights excludes",
+        "Custom events are being deduplicated by user session, showing unique sessions instead of total requests"
+      ],
+      "correct": 0,
+      "explanation": "With 10% event sampling configured, Application Insights captures roughly 1 in 10 events. So 500 captured events represents approximately 5,000 actual events -- matching the load balancer data. This is a critical concept for operators: always multiply dashboard event counts by roughly 10x to estimate actual traffic. Exceptions, however, are sampled at 100% and show true counts.",
+      "difficulty": "medium",
+      "objective": "apply-sampling-interpretation",
+      "sourceReference": {
+        "slideLabel": "📊 Telemetry Configuration",
+        "excerpt": "10% sampling means dashboard counts are approximately 10x lower than actual traffic"
+      }
+    },
+    {
+      "id": "q6",
+      "type": "text-input",
+      "question": "List the four key performance targets (SLOs) for the Agent Library and their threshold values.",
+      "placeholder": "The four targets are: (1) response time should be..., (2) page load..., (3) error rate..., (4) uptime...",
+      "sampleAnswer": "The four SLOs are: (1) p95 API response time under 200ms, (2) page load under 3 seconds, (3) error rate below 1%, and (4) uptime above 99.9%. These are monitored through Application Insights. The average API response time is currently 12ms, well within the p95 target. Alert thresholds are set at >1000ms for response time warnings and >5% HTTP 5xx for critical alerts.",
+      "keywords": ["200ms", "3 seconds", "1%", "99.9%", "p95", "response time", "uptime", "error rate"],
+      "difficulty": "medium",
+      "objective": "recall-performance-targets",
+      "sourceReference": {
+        "slideLabel": "📈 Performance Targets",
+        "excerpt": "p95 API response under 200ms, page load under 3s, error rate below 1%, uptime above 99.9%"
+      }
+    },
+    {
+      "id": "q7",
+      "type": "scenario",
+      "question": "What is the correct diagnostic approach?",
+      "situation": "At 9 AM you perform the morning health check. /api/health returns 'healthy' for all services, but users are reporting slow page loads (8-10 seconds). Application Insights shows p95 response time is 180ms -- within the 200ms target. Resource utilization shows CPU at 45% and memory at 60%.",
+      "options": [
+        "Check frontend telemetry -- the backend is healthy so the slowness is likely in client-side rendering, bundle size, or network latency between the CDN and users",
+        "Restart the Azure Functions app -- cold starts are likely causing the slowness even though the health check passed",
+        "Increase the CosmosDB RU allocation -- database reads are probably throttled but health checks use cached responses",
+        "The 10% sampling rate is hiding the slow requests -- increase sampling to 100% to find the real p95"
+      ],
+      "correct": 0,
+      "explanation": "The backend health checks pass, API p95 is within target (180ms < 200ms), and resource utilization is healthy. But users see 8-10 second page loads, which is well above the 3-second target. Since backend metrics are fine, the issue is almost certainly in the frontend layer: slow bundle loads, excessive client-side rendering, unoptimized assets, or CDN/network issues. The operations runbook separates frontend and backend telemetry precisely for this kind of differential diagnosis.",
+      "difficulty": "hard",
+      "objective": "apply-diagnostic-reasoning",
+      "sourceReference": {
+        "slideLabel": "🔍 Diagnostic Procedures",
+        "excerpt": "Backend healthy but users report slow page loads — check frontend telemetry"
+      }
+    }
+  ]
+}

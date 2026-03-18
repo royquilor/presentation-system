@@ -1,7 +1,12 @@
 import type { Report, FlexSection, SlideStyle, SlideBackground, SlideMedia } from "@/content/types";
 
-function parseStyleComment(line: string): { key: "background" | "textColor" | "labelColor"; value: SlideBackground | string } | null {
-  const match = line.match(/^<!--\s*(bg|text|label):\s*(.+?)\s*-->$/);
+type StyleDirective =
+  | { key: "background"; value: SlideBackground }
+  | { key: "textColor" | "labelColor"; value: string }
+  | { key: "mediaPosition"; value: string };
+
+function parseStyleComment(line: string): StyleDirective | null {
+  const match = line.match(/^<!--\s*(bg|text|label|media-position):\s*(.+?)\s*-->$/);
   if (!match) return null;
   const [, directive, raw] = match;
   const val = raw.trim();
@@ -21,6 +26,7 @@ function parseStyleComment(line: string): { key: "background" | "textColor" | "l
   }
   if (directive === "text") return { key: "textColor", value: val };
   if (directive === "label") return { key: "labelColor", value: val };
+  if (directive === "media-position") return { key: "mediaPosition", value: val };
   return null;
 }
 
@@ -198,41 +204,43 @@ export function parseMarkdownToReport(md: string): Report {
     }
 
     // Section headers — known types first
-    if (/^## 🎯/.test(trimmed) || /^## .*[Cc]ontext/.test(trimmed)) {
+    // Emoji regexes require the expected keyword after the emoji to prevent
+    // false matches (e.g. "## ✅ Verification" must NOT match nextsteps).
+    if (/^## 🎯\s*[Cc]ontext/.test(trimmed) || /^## .*[Cc]ontext/.test(trimmed)) {
       finalizeFlex();
       currentSection = "context";
       continue;
     }
-    if (/^## 🔍/.test(trimmed) || /^## .*[Pp]roblem/.test(trimmed)) {
+    if (/^## 🔍\s*[Pp]roblem/.test(trimmed) || /^## .*[Pp]roblem/.test(trimmed)) {
       finalizeFlex();
       currentSection = "problem";
       continue;
     }
-    if (/^## 📋/.test(trimmed) || /^## .*[Oo]bservation/.test(trimmed)) {
+    if (/^## 📋\s*[Oo]bserv/.test(trimmed) || /^## .*[Oo]bservation/.test(trimmed)) {
       finalizeFlex();
       currentSection = "observations";
-      obsIndex = -1;
+      if (observations.length === 0) obsIndex = -1;
       continue;
     }
-    if (/^## 💡/.test(trimmed) || /^## .*[Pp]roposal/.test(trimmed)) {
+    if (/^## 💡\s*[Pp]roposal/.test(trimmed) || /^## .*[Pp]roposal/.test(trimmed)) {
       finalizeFlex();
       currentSection = "proposal";
       inProposalBullets = false;
       continue;
     }
-    if (/^## ⚠️/.test(trimmed) || /^## .*[Rr]isk/.test(trimmed)) {
+    if (/^## ⚠️\s*[Rr]isk/.test(trimmed) || /^## .*[Rr]isk/.test(trimmed)) {
       finalizeFlex();
       currentSection = "risks";
-      riskIndex = -1;
+      if (risks.length === 0) riskIndex = -1;
       continue;
     }
-    if (/^## ✅/.test(trimmed) || /^## .*[Nn]ext.?[Ss]tep/.test(trimmed)) {
+    if (/^## ✅\s*[Nn]ext/.test(trimmed) || /^## .*[Nn]ext.?[Ss]tep/.test(trimmed)) {
       finalizeFlex();
       currentSection = "nextsteps";
-      stepIndex = -1;
+      if (nextSteps.length === 0) stepIndex = -1;
       continue;
     }
-    if (/^## 🔑/.test(trimmed) || /^## .*[Cc]los/.test(trimmed)) {
+    if (/^## 🔑\s*[Cc]los/.test(trimmed) || /^## .*[Cc]los/.test(trimmed)) {
       finalizeFlex();
       currentSection = "closer";
       continue;
@@ -260,16 +268,30 @@ export function parseMarkdownToReport(md: string): Report {
     // Style comment directives: <!-- bg: ... -->, <!-- text: ... -->, <!-- label: ... -->
     const styleDirective = parseStyleComment(trimmed);
     if (styleDirective) {
-      if (currentSection === "flex" && currentFlex) {
-        if (flexItemIndex >= 0) {
-          currentFlex.items[flexItemIndex].style = mergeStyle(currentFlex.items[flexItemIndex].style, styleDirective.key, styleDirective.value);
+      if (styleDirective.key === "mediaPosition") {
+        const pos = styleDirective.value as SlideMedia["position"];
+        const applyPos = (s?: SlideStyle) => {
+          if (s?.media) s.media.position = pos;
+        };
+        if (currentSection === "flex" && currentFlex) {
+          applyPos(flexItemIndex >= 0 ? currentFlex.items[flexItemIndex].style : currentFlex.style);
+        } else if (currentSection === "observations" && obsIndex >= 0) {
+          applyPos(observations[obsIndex].style);
         } else {
-          currentFlex.style = mergeStyle(currentFlex.style, styleDirective.key, styleDirective.value);
+          applyPos(sectionStyles[currentSection]);
         }
-      } else if (currentSection === "observations" && obsIndex >= 0) {
-        observations[obsIndex].style = mergeStyle(observations[obsIndex].style, styleDirective.key, styleDirective.value);
       } else {
-        sectionStyles[currentSection] = mergeStyle(sectionStyles[currentSection], styleDirective.key, styleDirective.value);
+        if (currentSection === "flex" && currentFlex) {
+          if (flexItemIndex >= 0) {
+            currentFlex.items[flexItemIndex].style = mergeStyle(currentFlex.items[flexItemIndex].style, styleDirective.key, styleDirective.value);
+          } else {
+            currentFlex.style = mergeStyle(currentFlex.style, styleDirective.key, styleDirective.value);
+          }
+        } else if (currentSection === "observations" && obsIndex >= 0) {
+          observations[obsIndex].style = mergeStyle(observations[obsIndex].style, styleDirective.key, styleDirective.value);
+        } else {
+          sectionStyles[currentSection] = mergeStyle(sectionStyles[currentSection], styleDirective.key, styleDirective.value);
+        }
       }
       continue;
     }
@@ -485,10 +507,7 @@ function stripBold(s: string): string {
 
 function stripMarkdown(s: string): string {
   return s
-    .replace(/\*\*/g, "")
-    .replace(/\*([^*]+)\*/g, "$1")
     .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/^\d+\.\s+/, "")
     .trim();
 }
