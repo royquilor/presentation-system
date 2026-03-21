@@ -16,7 +16,6 @@ import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import {
   slugify,
   formatDate,
-  splitSections,
   extractBullets,
   extractNumberedItems,
   extractParagraphs,

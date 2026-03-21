@@ -19,7 +19,6 @@ const COLORS = {
 export function ROIBarChart() {
   const barWidth = 64;
   const chartHeight = 260;
-  const chartWidth = 480;
   const leftPad = 80;
   const topPad = 24;
   const gap = 32;
@@ -936,7 +935,7 @@ export function CostScenarioChart() {
     { label: "Medium ($10/user)", variable: 780, fixed: 515, total: 1295, perUser: "$10" },
     { label: "High ($15/user)", variable: 1170, fixed: 515, total: 1685, perUser: "$15" },
   ];
-  const w = 480, h = 220, padL = 105, padR = 80, padT = 30, padB = 20;
+  const w = 480, h = 220, padL = 105, padR = 80, padT = 30;
   const plotW = w - padL - padR;
   const barH = 32, gap = 20;
   const maxVal = 1800;

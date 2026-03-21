@@ -195,9 +195,9 @@ function buildSlides(): Slide[] {
           <h2 className={H2}>$905K to $1.7M — depending on usage</h2>
           <CostScenarioChart />
           <div className="mt-6 p-4 rounded-lg border border-amber-500/20 bg-amber-500/[0.04]">
-            <p className="text-amber-600 dark:text-amber-400 font-semibold text-sm">The "$5/user" claim uses the lowest scenario</p>
+            <p className="text-amber-600 dark:text-amber-400 font-semibold text-sm">The &quot;$5/user&quot; claim uses the lowest scenario</p>
             <p className="text-foreground/50 text-xs mt-1">
-              Presentations cite "$5/user/month" — this is the low scenario from pilot data (actual July 2025).
+              Presentations cite &quot;$5/user/month&quot; — this is the low scenario from pilot data (actual July 2025).
               The medium projection is $10/user/month. The Business Case uses $10/user for its break-even calculations, not $5.
             </p>
           </div>
@@ -395,7 +395,7 @@ function buildSlides(): Slide[] {
           <p className={BODY}>
             Conver is structurally cheaper than Copilot at every scenario — $905K to $1.7M versus $3.9M.
             The infrastructure is validated from pilot actuals. The ROI is positive even at maximum cost.
-            But the "$5/user/month" headline is the lowest of three scenarios, based on pilot data,
+            But the &quot;$5/user/month&quot; headline is the lowest of three scenarios, based on pilot data,
             and the token audit is finding burn rate discrepancies. Use $5–$15 as the range until the audit completes.
           </p>
           <a href={`${C}/39929380876`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-foreground/50 hover:text-foreground transition-colors group mt-8">

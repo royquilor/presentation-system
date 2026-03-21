@@ -31,15 +31,6 @@ function Cite({ href, children }: { href: string; children: React.ReactNode }) {
   return <a href={href} target="_blank" rel="noopener noreferrer" className={`text-foreground/40 text-sm ${CL}`}>{children}</a>;
 }
 
-function KPI({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="text-center">
-      <p className="text-3xl md:text-4xl font-bold text-foreground">{value}</p>
-      <p className="text-foreground/50 text-sm mt-1">{label}</p>
-    </div>
-  );
-}
-
 function scrollToSlide(n: number) {
   document.getElementById(`slide-${n}`)?.scrollIntoView({ behavior: "instant", block: "start" });
 }
